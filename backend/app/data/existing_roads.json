@@ -1,0 +1,226 @@
+[
+  {
+    "id": "1-3",
+    "from": "1",
+    "to": "3",
+    "distance_km": 8.5,
+    "capacity_vehicles_per_hour": 3000,
+    "condition": 7
+  },
+  {
+    "id": "1-8",
+    "from": "1",
+    "to": "8",
+    "distance_km": 6.2,
+    "capacity_vehicles_per_hour": 2500,
+    "condition": 6
+  },
+  {
+    "id": "2-3",
+    "from": "2",
+    "to": "3",
+    "distance_km": 5.9,
+    "capacity_vehicles_per_hour": 2800,
+    "condition": 8
+  },
+  {
+    "id": "2-5",
+    "from": "2",
+    "to": "5",
+    "distance_km": 4.0,
+    "capacity_vehicles_per_hour": 3200,
+    "condition": 9
+  },
+  {
+    "id": "3-5",
+    "from": "3",
+    "to": "5",
+    "distance_km": 6.1,
+    "capacity_vehicles_per_hour": 3500,
+    "condition": 7
+  },
+  {
+    "id": "3-6",
+    "from": "3",
+    "to": "6",
+    "distance_km": 3.2,
+    "capacity_vehicles_per_hour": 2000,
+    "condition": 8
+  },
+  {
+    "id": "3-9",
+    "from": "3",
+    "to": "9",
+    "distance_km": 4.5,
+    "capacity_vehicles_per_hour": 2600,
+    "condition": 6
+  },
+  {
+    "id": "3-10",
+    "from": "3",
+    "to": "10",
+    "distance_km": 3.8,
+    "capacity_vehicles_per_hour": 2400,
+    "condition": 7
+  },
+  {
+    "id": "4-2",
+    "from": "4",
+    "to": "2",
+    "distance_km": 15.2,
+    "capacity_vehicles_per_hour": 3800,
+    "condition": 9
+  },
+  {
+    "id": "4-14",
+    "from": "4",
+    "to": "14",
+    "distance_km": 5.3,
+    "capacity_vehicles_per_hour": 3000,
+    "condition": 10
+  },
+  {
+    "id": "5-11",
+    "from": "5",
+    "to": "11",
+    "distance_km": 7.9,
+    "capacity_vehicles_per_hour": 3100,
+    "condition": 7
+  },
+  {
+    "id": "6-9",
+    "from": "6",
+    "to": "9",
+    "distance_km": 2.2,
+    "capacity_vehicles_per_hour": 1800,
+    "condition": 8
+  },
+  {
+    "id": "7-8",
+    "from": "7",
+    "to": "8",
+    "distance_km": 24.5,
+    "capacity_vehicles_per_hour": 3500,
+    "condition": 8
+  },
+  {
+    "id": "7-15",
+    "from": "7",
+    "to": "15",
+    "distance_km": 9.8,
+    "capacity_vehicles_per_hour": 3000,
+    "condition": 9
+  },
+  {
+    "id": "8-10",
+    "from": "8",
+    "to": "10",
+    "distance_km": 3.3,
+    "capacity_vehicles_per_hour": 2200,
+    "condition": 7
+  },
+  {
+    "id": "8-12",
+    "from": "8",
+    "to": "12",
+    "distance_km": 14.8,
+    "capacity_vehicles_per_hour": 2600,
+    "condition": 5
+  },
+  {
+    "id": "9-10",
+    "from": "9",
+    "to": "10",
+    "distance_km": 2.1,
+    "capacity_vehicles_per_hour": 1900,
+    "condition": 7
+  },
+  {
+    "id": "10-11",
+    "from": "10",
+    "to": "11",
+    "distance_km": 8.7,
+    "capacity_vehicles_per_hour": 2400,
+    "condition": 6
+  },
+  {
+    "id": "11-F2",
+    "from": "11",
+    "to": "F2",
+    "distance_km": 3.6,
+    "capacity_vehicles_per_hour": 2200,
+    "condition": 7
+  },
+  {
+    "id": "12-1",
+    "from": "12",
+    "to": "1",
+    "distance_km": 12.7,
+    "capacity_vehicles_per_hour": 2800,
+    "condition": 6
+  },
+  {
+    "id": "13-4",
+    "from": "13",
+    "to": "4",
+    "distance_km": 45.0,
+    "capacity_vehicles_per_hour": 4000,
+    "condition": 10
+  },
+  {
+    "id": "14-13",
+    "from": "14",
+    "to": "13",
+    "distance_km": 35.5,
+    "capacity_vehicles_per_hour": 3800,
+    "condition": 9
+  },
+  {
+    "id": "15-7",
+    "from": "15",
+    "to": "7",
+    "distance_km": 9.8,
+    "capacity_vehicles_per_hour": 3000,
+    "condition": 9
+  },
+  {
+    "id": "F1-5",
+    "from": "F1",
+    "to": "5",
+    "distance_km": 7.5,
+    "capacity_vehicles_per_hour": 3500,
+    "condition": 9
+  },
+  {
+    "id": "F1-2",
+    "from": "F1",
+    "to": "2",
+    "distance_km": 9.2,
+    "capacity_vehicles_per_hour": 3200,
+    "condition": 8
+  },
+  {
+    "id": "F2-3",
+    "from": "F2",
+    "to": "3",
+    "distance_km": 2.5,
+    "capacity_vehicles_per_hour": 2000,
+    "condition": 7
+  },
+  {
+    "id": "F7-15",
+    "from": "F7",
+    "to": "15",
+    "distance_km": 8.3,
+    "capacity_vehicles_per_hour": 2800,
+    "condition": 8
+  },
+  {
+    "id": "F8-4",
+    "from": "F8",
+    "to": "4",
+    "distance_km": 6.1,
+    "capacity_vehicles_per_hour": 3000,
+    "condition": 9
+  }
+]

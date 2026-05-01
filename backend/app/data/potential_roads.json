@@ -1,0 +1,122 @@
+[
+  {
+    "id": "1-4",
+    "from": "1",
+    "to": "4",
+    "distance_km": 22.8,
+    "estimated_capacity_vehicles_per_hour": 4000,
+    "construction_cost_million_egp": 450
+  },
+  {
+    "id": "1-14",
+    "from": "1",
+    "to": "14",
+    "distance_km": 25.3,
+    "estimated_capacity_vehicles_per_hour": 3800,
+    "construction_cost_million_egp": 500
+  },
+  {
+    "id": "2-13",
+    "from": "2",
+    "to": "13",
+    "distance_km": 48.2,
+    "estimated_capacity_vehicles_per_hour": 4500,
+    "construction_cost_million_egp": 950
+  },
+  {
+    "id": "3-13",
+    "from": "3",
+    "to": "13",
+    "distance_km": 56.7,
+    "estimated_capacity_vehicles_per_hour": 4500,
+    "construction_cost_million_egp": 1100
+  },
+  {
+    "id": "5-4",
+    "from": "5",
+    "to": "4",
+    "distance_km": 16.8,
+    "estimated_capacity_vehicles_per_hour": 3500,
+    "construction_cost_million_egp": 320
+  },
+  {
+    "id": "6-8",
+    "from": "6",
+    "to": "8",
+    "distance_km": 7.5,
+    "estimated_capacity_vehicles_per_hour": 2500,
+    "construction_cost_million_egp": 150
+  },
+  {
+    "id": "7-13",
+    "from": "7",
+    "to": "13",
+    "distance_km": 82.3,
+    "estimated_capacity_vehicles_per_hour": 4000,
+    "construction_cost_million_egp": 1600
+  },
+  {
+    "id": "9-11",
+    "from": "9",
+    "to": "11",
+    "distance_km": 6.9,
+    "estimated_capacity_vehicles_per_hour": 2800,
+    "construction_cost_million_egp": 140
+  },
+  {
+    "id": "10-F7",
+    "from": "10",
+    "to": "F7",
+    "distance_km": 27.4,
+    "estimated_capacity_vehicles_per_hour": 3200,
+    "construction_cost_million_egp": 550
+  },
+  {
+    "id": "11-13",
+    "from": "11",
+    "to": "13",
+    "distance_km": 62.1,
+    "estimated_capacity_vehicles_per_hour": 4200,
+    "construction_cost_million_egp": 1250
+  },
+  {
+    "id": "12-14",
+    "from": "12",
+    "to": "14",
+    "distance_km": 30.5,
+    "estimated_capacity_vehicles_per_hour": 3600,
+    "construction_cost_million_egp": 610
+  },
+  {
+    "id": "14-5",
+    "from": "14",
+    "to": "5",
+    "distance_km": 18.2,
+    "estimated_capacity_vehicles_per_hour": 3300,
+    "construction_cost_million_egp": 360
+  },
+  {
+    "id": "15-9",
+    "from": "15",
+    "to": "9",
+    "distance_km": 22.7,
+    "estimated_capacity_vehicles_per_hour": 3000,
+    "construction_cost_million_egp": 450
+  },
+  {
+    "id": "F1-13",
+    "from": "F1",
+    "to": "13",
+    "distance_km": 40.2,
+    "estimated_capacity_vehicles_per_hour": 4000,
+    "construction_cost_million_egp": 800
+  },
+  {
+    "id": "F7-9",
+    "from": "F7",
+    "to": "9",
+    "distance_km": 26.8,
+    "estimated_capacity_vehicles_per_hour": 3200,
+    "construction_cost_million_egp": 540
+  }
+]

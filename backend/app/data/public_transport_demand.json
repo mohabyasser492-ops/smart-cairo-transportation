@@ -1,0 +1,87 @@
+[
+  {
+    "from": "3",
+    "to": "5",
+    "daily_passengers": 15000
+  },
+  {
+    "from": "1",
+    "to": "3",
+    "daily_passengers": 12000
+  },
+  {
+    "from": "2",
+    "to": "3",
+    "daily_passengers": 18000
+  },
+  {
+    "from": "F2",
+    "to": "11",
+    "daily_passengers": 25000
+  },
+  {
+    "from": "F1",
+    "to": "3",
+    "daily_passengers": 20000
+  },
+  {
+    "from": "7",
+    "to": "3",
+    "daily_passengers": 14000
+  },
+  {
+    "from": "4",
+    "to": "3",
+    "daily_passengers": 16000
+  },
+  {
+    "from": "8",
+    "to": "3",
+    "daily_passengers": 22000
+  },
+  {
+    "from": "3",
+    "to": "9",
+    "daily_passengers": 13000
+  },
+  {
+    "from": "5",
+    "to": "2",
+    "daily_passengers": 17000
+  },
+  {
+    "from": "11",
+    "to": "3",
+    "daily_passengers": 24000
+  },
+  {
+    "from": "12",
+    "to": "3",
+    "daily_passengers": 11000
+  },
+  {
+    "from": "1",
+    "to": "8",
+    "daily_passengers": 9000
+  },
+  {
+    "from": "7",
+    "to": "F7",
+    "daily_passengers": 18000
+  },
+  {
+    "from": "4",
+    "to": "F8",
+    "daily_passengers": 12000
+  },
+  {
+    "from": "13",
+    "to": "3",
+    "daily_passengers": 8000
+  },
+  {
+    "from": "14",
+    "to": "4",
+    "daily_passengers": 7000
+  }
+]
