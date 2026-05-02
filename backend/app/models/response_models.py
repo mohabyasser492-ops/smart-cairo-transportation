@@ -1,5 +1,14 @@
-from pydantic import BaseModel
+def success_response(data, message: str):
+    return {
+        "success": True,
+        "message": message,
+        "data": data,
+    }
 
-class RouteResponse(BaseModel):
-    path: list[str]
-    cost: float
+
+def error_response(message: str):
+    return {
+        "success": False,
+        "message": message,
+        "data": None,
+    }
