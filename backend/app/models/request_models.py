@@ -5,6 +5,11 @@ class ShortestPathRequest(BaseModel):
     source: str = Field(..., example="Nasr City")
     destination: str = Field(..., example="Downtown")
     weight: str = Field(default="distance", example="distance")
+class EmergencyRoutingRequest(BaseModel):
+    source: str = Field(..., example="Nasr City")
+    destination: str = Field(..., example="Downtown Cairo")
+    emergency_type: str = Field(default="ambulance", example="ambulance")
+
 
 def success_response(data, message: str):
     return {
