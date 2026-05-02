@@ -10,5 +10,5 @@ class Settings(BaseSettings):
         env_file = ".venv"
 
 
-setting = Settings()
+settings = Settings()
 DATA_DIR = 'app/data'
