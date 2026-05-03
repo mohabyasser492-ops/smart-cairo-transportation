@@ -1,4 +1,5 @@
 import heapq
+from time import perf_counter
 from typing import Any, Dict
 
 from app.graph.graph import Graph
@@ -24,13 +25,15 @@ def dijkstra_shortest_path(
             f"Available nodes: {available_nodes}"
         )
 
+    start_time = perf_counter()
+
     distances = {node: float("inf") for node in graph.get_nodes()}
     previous_nodes = {node: None for node in graph.get_nodes()}
-
     distances[source] = 0
 
     priority_queue = [(0, source)]
     visited = set()
+    exploration_order = []
 
     while priority_queue:
         current_distance, current_node = heapq.heappop(priority_queue)
@@ -39,6 +42,7 @@ def dijkstra_shortest_path(
             continue
 
         visited.add(current_node)
+        exploration_order.append(current_node)
 
         if current_node == destination:
             break
@@ -61,6 +65,7 @@ def dijkstra_shortest_path(
         raise ValueError(f"No path found from {source} to {destination}")
 
     path = _reconstruct_path(previous_nodes, source, destination)
+    runtime_ms = round((perf_counter() - start_time) * 1000, 3)
 
     return {
         "algorithm": "dijkstra",
@@ -70,6 +75,8 @@ def dijkstra_shortest_path(
         "total_cost": round(distances[destination], 2),
         "weight_used": weight,
         "visited_nodes_count": len(visited),
+        "runtime_ms": runtime_ms,
+        "exploration_order": exploration_order,
     }
 
 

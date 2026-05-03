@@ -62,10 +62,6 @@ class RoutingService:
         dijkstra_visited = dijkstra_result.get("visited_nodes_count", float("inf"))
         astar_visited = astar_result.get("visited_nodes_count", float("inf"))
 
-        # Choose best route:
-        # 1) lower total cost wins
-        # 2) if equal cost, fewer visited nodes wins
-        # 3) if still tied, prefer A* for emergency routing
         if astar_cost < dijkstra_cost:
             chosen_algorithm = "astar"
             chosen_base = astar_result
@@ -95,9 +91,6 @@ class RoutingService:
             emergency_type=emergency_type,
         )
 
-        # IMPORTANT:
-        # Build a NEW response dict instead of modifying chosen_base directly.
-        # This avoids circular references when adding comparison results.
         result = {
             **chosen_base,
             "emergency_type": emergency_type,
@@ -132,6 +125,35 @@ class RoutingService:
             weight=weight,
         )
 
+        dijkstra_cost = self._extract_total_cost(dijkstra_result)
+        astar_cost = self._extract_total_cost(astar_result)
+
+        dijkstra_visited = dijkstra_result.get("visited_nodes_count", float("inf"))
+        astar_visited = astar_result.get("visited_nodes_count", float("inf"))
+
+        if astar_cost < dijkstra_cost:
+            winner = "astar"
+            winner_reason = "A* wins because it produced a lower total route cost."
+        elif dijkstra_cost < astar_cost:
+            winner = "dijkstra"
+            winner_reason = "Dijkstra wins because it produced a lower total route cost."
+        else:
+            if astar_visited < dijkstra_visited:
+                winner = "astar"
+                winner_reason = (
+                    "Both algorithms had equal total cost, so A* wins because it visited fewer nodes."
+                )
+            elif dijkstra_visited < astar_visited:
+                winner = "dijkstra"
+                winner_reason = (
+                    "Both algorithms had equal total cost, so Dijkstra wins because it visited fewer nodes."
+                )
+            else:
+                winner = "tie"
+                winner_reason = (
+                    "Both algorithms had equal total cost and visited the same number of nodes."
+                )
+
         return {
             "source": source,
             "destination": destination,
@@ -141,8 +163,18 @@ class RoutingService:
             "summary": {
                 "dijkstra_visited_nodes": dijkstra_result["visited_nodes_count"],
                 "astar_visited_nodes": astar_result["visited_nodes_count"],
+                "dijkstra_total_cost": dijkstra_result["total_cost"],
+                "astar_total_cost": astar_result["total_cost"],
+                "dijkstra_runtime_ms": dijkstra_result.get("runtime_ms", 0),
+                "astar_runtime_ms": astar_result.get("runtime_ms", 0),
+                "winner": winner,
+                "winner_reason": winner_reason,
                 "astar_more_efficient": astar_result["visited_nodes_count"]
                 <= dijkstra_result["visited_nodes_count"],
+                "max_exploration_steps": max(
+                    len(dijkstra_result.get("exploration_order", [])),
+                    len(astar_result.get("exploration_order", [])),
+                ),
             },
         }
 
@@ -220,9 +252,6 @@ class RoutingService:
         }
 
     def _extract_total_cost(self, result):
-        """
-        Safely extract route cost/distance from an algorithm result.
-        """
         if result is None:
             return float("inf")
 
@@ -239,9 +268,6 @@ class RoutingService:
         total_distance_km: float,
         emergency_type: str,
     ) -> int | None:
-        """
-        Estimate emergency response time based on average emergency vehicle speed.
-        """
         if total_distance_km == float("inf"):
             return None
 

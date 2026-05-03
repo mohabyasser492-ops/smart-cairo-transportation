@@ -14,19 +14,45 @@ export default function PerformanceChart({ data = [] }) {
   }
 
   return (
-    <div className="chart-card">
-      <h3>Visited Nodes Comparison</h3>
+    <div className="chart-stack">
+      <div className="chart-card">
+        <h3>Visited Nodes Comparison</h3>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="algorithm" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="visited_nodes" name="Visited Nodes" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="algorithm" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="visited_nodes" name="Visited Nodes" />
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="chart-card">
+        <h3>Runtime Comparison (ms)</h3>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="algorithm" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="runtime_ms" name="Runtime (ms)" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="chart-card">
+        <h3>Total Cost Comparison</h3>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="algorithm" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="total_cost" name="Total Cost" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
-``

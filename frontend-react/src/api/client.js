@@ -33,7 +33,6 @@ async function request(path, options = {}) {
     throw new Error(message);
   }
 
-  // unwrap backend success response
   if (body?.success && body?.data !== undefined) {
     return body.data;
   }
@@ -68,5 +67,4 @@ export const routingApi = {
   emergencyRoute(payload) {
     return apiPost("/api/routing/emergency", payload);
   },
-  
 };

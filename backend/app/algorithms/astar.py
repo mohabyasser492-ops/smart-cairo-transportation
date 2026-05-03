@@ -1,4 +1,5 @@
 import heapq
+from time import perf_counter
 from typing import Any, Dict
 
 from app.graph.graph import Graph
@@ -24,9 +25,10 @@ def astar_shortest_path(
     if destination not in coordinates:
         raise ValueError(f"Coordinates missing for destination node: {destination}")
 
+    start_time = perf_counter()
+
     actual_costs = {node: float("inf") for node in graph.get_nodes()}
     previous_nodes = {node: None for node in graph.get_nodes()}
-
     actual_costs[source] = 0
 
     priority_queue = [
@@ -37,6 +39,7 @@ def astar_shortest_path(
     ]
 
     visited = set()
+    exploration_order = []
 
     while priority_queue:
         _, current_node = heapq.heappop(priority_queue)
@@ -45,6 +48,7 @@ def astar_shortest_path(
             continue
 
         visited.add(current_node)
+        exploration_order.append(current_node)
 
         if current_node == destination:
             break
@@ -77,6 +81,7 @@ def astar_shortest_path(
         raise ValueError(f"No path found from {source} to {destination}")
 
     path = _reconstruct_path(previous_nodes, source, destination)
+    runtime_ms = round((perf_counter() - start_time) * 1000, 3)
 
     return {
         "algorithm": "astar",
@@ -86,6 +91,8 @@ def astar_shortest_path(
         "total_cost": round(actual_costs[destination], 2),
         "weight_used": weight,
         "visited_nodes_count": len(visited),
+        "runtime_ms": runtime_ms,
+        "exploration_order": exploration_order,
     }
 
 
