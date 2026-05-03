@@ -21,6 +21,13 @@ class InfrastructureOptimizationRequest(BaseModel):
     cost_per_km: float = Field(default=10_000_000, example=10000000)
     priority: str = Field(default="cost", example="cost")
 
+class BusAllocationRequest(BaseModel):
+    available_buses: int = Field(default=100, example=100)
+
+
+class MaintenancePlanRequest(BaseModel):
+    budget: float = Field(default=50000000, example=50000000)
+
    
 def success_response(data, message: str):
     return {

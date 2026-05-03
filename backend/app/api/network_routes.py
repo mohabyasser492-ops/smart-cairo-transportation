@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.models.request_models import InfrastructureOptimizationRequest
+from app.models.request_models import InfrastructureOptimizationRequest, MaintenancePlanRequest
 from app.models.response_models import error_response, success_response
 from app.services.network_service import network_service
 
@@ -72,4 +72,28 @@ def optimize_expansion(request: InfrastructureOptimizationRequest):
         raise HTTPException(
             status_code=500,
             detail=error_response(f"Unexpected expansion optimization error: {str(error)}"),
+        )
+    
+@router.post("/maintenance-plan")
+def create_maintenance_plan(request: MaintenancePlanRequest):
+    try:
+        result = network_service.create_maintenance_plan(
+            budget=request.budget,
+        )
+
+        return success_response(
+            data=result,
+            message="Maintenance plan optimized successfully",
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=error_response(str(error)),
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=error_response(f"Unexpected maintenance planning error: {str(error)}"),
         )

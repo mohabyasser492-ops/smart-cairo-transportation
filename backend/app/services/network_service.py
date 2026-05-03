@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 from app.algorithms.kruskal_mst import kruskal_minimum_spanning_tree
 from app.services.data_service import data_service
-
+from app.algorithms.dp_maintenance import optimize_maintenance_plan
 
 class NetworkService:
     def get_minimum_spanning_tree(self) -> Dict[str, Any]:
@@ -181,6 +181,60 @@ class NetworkService:
                     return data[key]
 
         return []
+    
+    def create_maintenance_plan(self, budget: float) -> Dict[str, Any]:
+        existing_edges = self._get_existing_road_edges(cost_per_km=1)
+        maintenance_projects = []
+
+        for edge in existing_edges:
+            condition = edge.get("condition")
+
+            if condition is None:
+                condition = 5
+
+            condition = int(condition)
+
+            maintenance_cost = self._estimate_maintenance_cost(
+                distance_km=float(edge.get("distance_km", 1)),
+                condition=condition,
+            )
+
+            benefit_score = self._estimate_maintenance_benefit(
+                capacity=edge.get("capacity_vehicles_per_hour"),
+                condition=condition,
+            )
+
+            maintenance_projects.append(
+                {
+                    "road_id": edge.get("road_id"),
+                    "source": edge.get("source"),
+                    "destination": edge.get("destination"),
+                    "condition": condition,
+                    "maintenance_cost": maintenance_cost,
+                    "benefit_score": benefit_score,
+                }
+            )
+
+        return optimize_maintenance_plan(
+            road_projects=maintenance_projects,
+            budget=budget,
+        )
+
+    @staticmethod
+    def _estimate_maintenance_cost(distance_km: float, condition: int) -> int:
+        base_cost_per_km = 1_000_000
+        condition_penalty = max(1, 10 - condition)
+
+        return int(distance_km * base_cost_per_km * condition_penalty)
+
+    @staticmethod
+    def _estimate_maintenance_benefit(capacity, condition: int) -> int:
+        if capacity is None:
+            capacity = 1000
+
+        condition_gap = max(1, 10 - condition)
+
+        return int((int(capacity) / 100) * condition_gap)
 
 
 network_service = NetworkService()
