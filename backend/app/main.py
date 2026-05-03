@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.network_routes import router as network_router
 
 from app.api.routes import router as base_router
 from app.api.data_routes import router as data_router
@@ -26,6 +27,7 @@ app.add_middleware(
 app.include_router(base_router, prefix=settings.API_PREFIX)
 app.include_router(data_router, prefix=settings.API_PREFIX)
 app.include_router(routing_router, prefix=settings.API_PREFIX)
+app.include_router(network_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
