@@ -1,8 +1,9 @@
 from app.algorithms.astar import astar_shortest_path
 from app.algorithms.dijkstra import dijkstra_shortest_path
+from app.algorithms.time_dependent_routing import time_dependent_shortest_path
 from app.graph.build_graph import build_road_graph
 from app.services.data_service import data_service
-from app.algorithms.time_dependent_routing import time_dependent_shortest_path
+
 
 class RoutingService:
     def find_shortest_path(
@@ -43,15 +44,73 @@ class RoutingService:
         destination: str,
         emergency_type: str = "ambulance",
     ):
-        result = self.find_astar_path(
+        dijkstra_result = self.find_shortest_path(
             source=source,
             destination=destination,
             weight="distance",
         )
 
-        result["emergency_type"] = emergency_type
-        result["priority"] = "high"
-        result["recommended_action"] = "Dispatch immediately using the fastest available route"
+        astar_result = self.find_astar_path(
+            source=source,
+            destination=destination,
+            weight="distance",
+        )
+
+        dijkstra_cost = self._extract_total_cost(dijkstra_result)
+        astar_cost = self._extract_total_cost(astar_result)
+
+        dijkstra_visited = dijkstra_result.get("visited_nodes_count", float("inf"))
+        astar_visited = astar_result.get("visited_nodes_count", float("inf"))
+
+        # Choose best route:
+        # 1) lower total cost wins
+        # 2) if equal cost, fewer visited nodes wins
+        # 3) if still tied, prefer A* for emergency routing
+        if astar_cost < dijkstra_cost:
+            chosen_algorithm = "astar"
+            chosen_base = astar_result
+            reason = "A* was selected because it produced a lower total route cost."
+        elif dijkstra_cost < astar_cost:
+            chosen_algorithm = "dijkstra"
+            chosen_base = dijkstra_result
+            reason = "Dijkstra was selected because it produced a lower total route cost."
+        else:
+            if astar_visited <= dijkstra_visited:
+                chosen_algorithm = "astar"
+                chosen_base = astar_result
+                reason = (
+                    "A* and Dijkstra had equal route cost, so A* was selected "
+                    "because it explored fewer or equal nodes."
+                )
+            else:
+                chosen_algorithm = "dijkstra"
+                chosen_base = dijkstra_result
+                reason = (
+                    "A* and Dijkstra had equal route cost, so Dijkstra was selected "
+                    "because it explored fewer nodes."
+                )
+
+        estimated_time_min = self._estimate_emergency_time_minutes(
+            total_distance_km=self._extract_total_cost(chosen_base),
+            emergency_type=emergency_type,
+        )
+
+        # IMPORTANT:
+        # Build a NEW response dict instead of modifying chosen_base directly.
+        # This avoids circular references when adding comparison results.
+        result = {
+            **chosen_base,
+            "emergency_type": emergency_type,
+            "priority": "high",
+            "recommended_action": "Dispatch immediately using the fastest available route",
+            "chosen_algorithm": chosen_algorithm,
+            "selection_reason": reason,
+            "estimated_time_min": estimated_time_min,
+            "comparison": {
+                "dijkstra": dict(dijkstra_result),
+                "astar": dict(astar_result),
+            },
+        }
 
         return result
 
@@ -109,7 +168,7 @@ class RoutingService:
                 }
 
         return coordinates
-    
+
     def find_time_dependent_route(
         self,
         source: str,
@@ -159,6 +218,45 @@ class RoutingService:
                 "reason": "This route considers traffic conditions based on departure time.",
             },
         }
+
+    def _extract_total_cost(self, result):
+        """
+        Safely extract route cost/distance from an algorithm result.
+        """
+        if result is None:
+            return float("inf")
+
+        if "total_cost" in result and result["total_cost"] is not None:
+            return float(result["total_cost"])
+
+        if "cost" in result and result["cost"] is not None:
+            return float(result["cost"])
+
+        return float("inf")
+
+    def _estimate_emergency_time_minutes(
+        self,
+        total_distance_km: float,
+        emergency_type: str,
+    ) -> int | None:
+        """
+        Estimate emergency response time based on average emergency vehicle speed.
+        """
+        if total_distance_km == float("inf"):
+            return None
+
+        speed_by_type = {
+            "ambulance": 80,
+            "fire_truck": 70,
+            "police": 85,
+        }
+
+        speed_kmh = speed_by_type.get(emergency_type, 80)
+
+        if speed_kmh <= 0:
+            return None
+
+        return round((float(total_distance_km) / speed_kmh) * 60)
 
 
 routing_service = RoutingService()

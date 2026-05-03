@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException
 
-from app.models.request_models import EmergencyRoutingRequest, ShortestPathRequest , TimeDependentRoutingRequest
+from app.models.request_models import (
+    EmergencyRoutingRequest,
+    ShortestPathRequest,
+    TimeDependentRoutingRequest,
+)
 from app.models.response_models import error_response, success_response
 from app.services.routing_service import routing_service
-
-
 
 router = APIRouter(prefix="/routing", tags=["Routing"])
 
@@ -65,6 +67,11 @@ def get_astar_path(request: ShortestPathRequest):
 
 @router.post("/emergency")
 def get_emergency_route(request: EmergencyRoutingRequest):
+    """
+    Emergency route endpoint.
+    The actual algorithm decision (A* vs Dijkstra) should happen
+    inside routing_service.find_emergency_route().
+    """
     try:
         result = routing_service.find_emergency_route(
             source=request.source,
@@ -115,7 +122,8 @@ def compare_dijkstra_vs_astar(request: ShortestPathRequest):
             status_code=500,
             detail=error_response(f"Unexpected comparison error: {str(error)}"),
         )
-    
+
+
 @router.post("/time-dependent")
 def get_time_dependent_route(request: TimeDependentRoutingRequest):
     try:
