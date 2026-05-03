@@ -28,7 +28,12 @@ class BusAllocationRequest(BaseModel):
 class MaintenancePlanRequest(BaseModel):
     budget: float = Field(default=50000000, example=50000000)
 
-   
+class TrafficSignalOptimizationRequest(BaseModel):
+    total_cycle_time: int = Field(default=120, example=120)
+    min_green_time: int = Field(default=20, example=20)
+    max_green_time: int = Field(default=90, example=90)
+
+ 
 def success_response(data, message: str):
     return {
         "success": True,
