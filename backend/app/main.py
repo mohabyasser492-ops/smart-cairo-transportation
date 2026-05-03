@@ -6,6 +6,7 @@ from app.api.routes import router as base_router
 from app.api.data_routes import router as data_router
 from app.api.routing_routes import router as routing_router
 from app.api.traffic_routes import router as traffic_router
+from app.api.prediction_routes import router as prediction_router
 from app.core.config import settings
 
 
@@ -31,6 +32,7 @@ app.include_router(routing_router, prefix=settings.API_PREFIX)
 app.include_router(network_router, prefix=settings.API_PREFIX)
 app.include_router(transit_router, prefix=settings.API_PREFIX)
 app.include_router(traffic_router, prefix=settings.API_PREFIX)
+app.include_router(prediction_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
