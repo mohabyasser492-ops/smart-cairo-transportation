@@ -1,3 +1,17 @@
 {
-  "status": "not_trained_yet"
+  "model_type": "RandomForestRegressor",
+  "training_rows": 3360,
+  "feature_count": 7,
+  "feature_names": [
+    "hour",
+    "day_of_week_encoded",
+    "weather_encoded",
+    "is_holiday",
+    "road_capacity",
+    "road_length_km",
+    "historical_flow"
+  ],
+  "mae": 1.5808,
+  "rmse": 1.8534,
+  "r2_score": 0.7815
 }
