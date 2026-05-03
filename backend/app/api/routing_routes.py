@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
 
-from app.models.request_models import EmergencyRoutingRequest, ShortestPathRequest
+from app.models.request_models import EmergencyRoutingRequest, ShortestPathRequest , TimeDependentRoutingRequest
 from app.models.response_models import error_response, success_response
 from app.services.routing_service import routing_service
+
 
 
 router = APIRouter(prefix="/routing", tags=["Routing"])
@@ -113,4 +114,59 @@ def compare_dijkstra_vs_astar(request: ShortestPathRequest):
         raise HTTPException(
             status_code=500,
             detail=error_response(f"Unexpected comparison error: {str(error)}"),
+        )
+    
+@router.post("/time-dependent")
+def get_time_dependent_route(request: TimeDependentRoutingRequest):
+    try:
+        result = routing_service.find_time_dependent_route(
+            source=request.source,
+            destination=request.destination,
+            departure_time=request.departure_time,
+            day_type=request.day_type,
+        )
+
+        return success_response(
+            data=result,
+            message="Time-dependent route calculated successfully",
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=error_response(str(error)),
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=error_response(f"Unexpected time-dependent routing error: {str(error)}"),
+        )
+
+
+@router.post("/best-route-by-time")
+def get_best_route_by_time(request: TimeDependentRoutingRequest):
+    try:
+        result = routing_service.find_best_route_by_time(
+            source=request.source,
+            destination=request.destination,
+            departure_time=request.departure_time,
+            day_type=request.day_type,
+        )
+
+        return success_response(
+            data=result,
+            message="Best route by time calculated successfully",
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=error_response(str(error)),
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=error_response(f"Unexpected best-route-by-time error: {str(error)}"),
         )

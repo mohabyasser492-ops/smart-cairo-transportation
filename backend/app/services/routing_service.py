@@ -2,7 +2,7 @@ from app.algorithms.astar import astar_shortest_path
 from app.algorithms.dijkstra import dijkstra_shortest_path
 from app.graph.build_graph import build_road_graph
 from app.services.data_service import data_service
-
+from app.algorithms.time_dependent_routing import time_dependent_shortest_path
 
 class RoutingService:
     def find_shortest_path(
@@ -109,6 +109,56 @@ class RoutingService:
                 }
 
         return coordinates
+    
+    def find_time_dependent_route(
+        self,
+        source: str,
+        destination: str,
+        departure_time: str,
+        day_type: str = "weekday",
+    ):
+        graph = build_road_graph()
+
+        return time_dependent_shortest_path(
+            graph=graph,
+            source=source,
+            destination=destination,
+            departure_time=departure_time,
+            day_type=day_type,
+        )
+
+    def find_best_route_by_time(
+        self,
+        source: str,
+        destination: str,
+        departure_time: str,
+        day_type: str = "weekday",
+    ):
+        normal_route = self.find_shortest_path(
+            source=source,
+            destination=destination,
+            weight="distance",
+        )
+
+        time_dependent_route = self.find_time_dependent_route(
+            source=source,
+            destination=destination,
+            departure_time=departure_time,
+            day_type=day_type,
+        )
+
+        return {
+            "source": source,
+            "destination": destination,
+            "departure_time": departure_time,
+            "day_type": day_type,
+            "normal_shortest_route": normal_route,
+            "traffic_aware_route": time_dependent_route,
+            "recommendation": {
+                "recommended_algorithm": "time_dependent_dijkstra",
+                "reason": "This route considers traffic conditions based on departure time.",
+            },
+        }
 
 
 routing_service = RoutingService()
