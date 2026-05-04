@@ -9,23 +9,31 @@ import {
   buttonMotion,
 } from "../ui/motion";
 
+/**
+ * Helper to format numbers as currency
+ */
 function formatCurrency(value) {
   const numeric = Number(value);
-
-  if (Number.isNaN(numeric)) return "N/A";
-
-  return new Intl.NumberFormat("en-US").format(numeric);
+  if (isNaN(numeric)) return "N/A";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(numeric);
 }
 
+/**
+ * Reusable summary grid for displaying key-value pairs
+ */
 function SummaryGrid({ items = [] }) {
-  if (!items.length) {
+  if (!items || items.length === 0) {
     return <div className="empty-state">No summary data available.</div>;
   }
 
   return (
     <div className="result-grid">
-      {items.map((item) => (
-        <div key={item.label}>
+      {items.map((item, index) => (
+        <div key={`${item.label}-${index}`}>
           <span>{item.label}</span>
           <strong>{item.value}</strong>
         </div>
@@ -34,6 +42,9 @@ function SummaryGrid({ items = [] }) {
   );
 }
 
+/**
+ * Reusable list to display road segments/edges
+ */
 function EdgeList({ title, edges = [], mode = "expansion" }) {
   return (
     <motion.div
@@ -43,7 +54,7 @@ function EdgeList({ title, edges = [], mode = "expansion" }) {
     >
       <h4>{title}</h4>
 
-      {!edges.length ? (
+      {!edges || edges.length === 0 ? (
         <div className="empty-state">No roads available.</div>
       ) : (
         <div className="optimizer-road-list">
@@ -94,17 +105,19 @@ function EdgeList({ title, edges = [], mode = "expansion" }) {
 }
 
 export default function InfrastructureOptimizer() {
+  // Data States
   const [mstData, setMstData] = useState(null);
   const [planData, setPlanData] = useState(null);
   const [expansionResult, setExpansionResult] = useState(null);
   const [maintenanceResult, setMaintenanceResult] = useState(null);
 
+  // Loading & Error States
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingExpansion, setLoadingExpansion] = useState(false);
   const [loadingMaintenance, setLoadingMaintenance] = useState(false);
-
   const [error, setError] = useState("");
 
+  // Form States
   const [expansionForm, setExpansionForm] = useState({
     use_potential_roads: true,
     cost_per_km: 10000000,
@@ -115,59 +128,57 @@ export default function InfrastructureOptimizer() {
     budget: 50000000,
   });
 
+  // Initial Data Fetch
   useEffect(() => {
+    let isMounted = true;
+
     async function loadInitialData() {
       setLoadingInitial(true);
       setError("");
-
       try {
         const [mst, plan] = await Promise.all([
           networkApi.getMinimumSpanningTree(),
           networkApi.getInfrastructurePlan(),
         ]);
 
-        setMstData(mst);
-        setPlanData(plan);
+        if (isMounted) {
+          setMstData(mst);
+          setPlanData(plan);
+        }
       } catch (err) {
-        setError(err.message || "Could not load infrastructure planning data.");
+        if (isMounted) setError(err.message || "Could not load infrastructure data.");
       } finally {
-        setLoadingInitial(false);
+        if (isMounted) setLoadingInitial(false);
       }
     }
 
     loadInitialData();
+    return () => { isMounted = false; };
   }, []);
 
+  // Form Handlers
   function handleExpansionChange(event) {
     const { name, value, type, checked } = event.target;
-
     setExpansionForm((prev) => ({
       ...prev,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : name === "cost_per_km"
-          ? Number(value)
-          : value,
+      [name]: type === "checkbox" ? checked : (name === "cost_per_km" ? Number(value) : value),
     }));
   }
 
   function handleMaintenanceChange(event) {
     const { name, value } = event.target;
-
+    // FIX: Correctly update the specific field in the state object
     setMaintenanceForm((prev) => ({
       ...prev,
       [name]: Number(value),
     }));
   }
 
+  // API Execution Handlers
   async function handleRunExpansion(event) {
     event.preventDefault();
-
     setLoadingExpansion(true);
     setError("");
-    setExpansionResult(null);
-
     try {
       const data = await networkApi.optimizeExpansion(expansionForm);
       setExpansionResult(data);
@@ -180,11 +191,8 @@ export default function InfrastructureOptimizer() {
 
   async function handleRunMaintenance(event) {
     event.preventDefault();
-
     setLoadingMaintenance(true);
     setError("");
-    setMaintenanceResult(null);
-
     try {
       const data = await networkApi.createMaintenancePlan(maintenanceForm);
       setMaintenanceResult(data);
@@ -195,66 +203,39 @@ export default function InfrastructureOptimizer() {
     }
   }
 
+  // Memoized Summaries
   const mstSummaryItems = useMemo(() => {
     if (!mstData) return [];
-
     return [
-      {
-        label: "Connected",
-        value: mstData.connected ? "Yes" : "No",
-      },
-      {
-        label: "Nodes Count",
-        value: mstData.nodes_count ?? "N/A",
-      },
-      {
-        label: "Selected Edges",
-        value: mstData.selected_edges_count ?? "N/A",
-      },
+      { label: "Connected", value: mstData.connected ? "Yes" : "No" },
+      { label: "Nodes Count", value: mstData.nodes_count ?? "N/A" },
+      { label: "Selected Edges", value: mstData.selected_edges_count ?? "N/A" },
       {
         label: "Total Distance",
-        value:
-          mstData.total_distance_km != null
-            ? `${mstData.total_distance_km} km`
-            : "N/A",
+        value: mstData.total_distance_km != null ? `${mstData.total_distance_km} km` : "N/A",
       },
       {
         label: "Total Cost",
-        value: mstData.total_cost != null ? `${mstData.total_cost}` : "N/A",
+        value: mstData.total_cost != null ? formatCurrency(mstData.total_cost) : "N/A",
       },
-      {
-        label: "Method",
-        value: mstData.algorithm ?? "N/A",
-      },
+      { label: "Method", value: mstData.algorithm ?? "N/A" },
     ];
   }, [mstData]);
 
   const expansionSummaryItems = useMemo(() => {
     if (!expansionResult?.summary) return [];
-
+    const s = expansionResult.summary;
     return [
-      {
-        label: "Selected Roads",
-        value: expansionResult.summary.selected_roads ?? "N/A",
-      },
+      { label: "Selected Roads", value: s.selected_roads ?? "N/A" },
       {
         label: "Total Distance",
-        value:
-          expansionResult.summary.total_distance_km != null
-            ? `${expansionResult.summary.total_distance_km} km`
-            : "N/A",
+        value: s.total_distance_km != null ? `${s.total_distance_km} km` : "N/A",
       },
       {
         label: "Total Construction Cost",
-        value:
-          expansionResult.summary.estimated_total_cost != null
-            ? formatCurrency(expansionResult.summary.estimated_total_cost)
-            : "N/A",
+        value: s.estimated_total_cost != null ? formatCurrency(s.estimated_total_cost) : "N/A",
       },
-      {
-        label: "Network Connected",
-        value: expansionResult.summary.network_connected ? "Yes" : "No",
-      },
+      { label: "Network Connected", value: s.network_connected ? "Yes" : "No" },
     ];
   }, [expansionResult]);
 
@@ -263,7 +244,7 @@ export default function InfrastructureOptimizer() {
   }, [maintenanceResult]);
 
   return (
-    <motion.section {...pageTransition}>
+    <motion.section {...pageTransition} className="optimizer-container">
       <motion.div className="page-header" {...resultReveal}>
         <p className="eyebrow">Network Planning</p>
         <h1>Infrastructure Optimizer</h1>
@@ -276,11 +257,10 @@ export default function InfrastructureOptimizer() {
       {error && <div className="error-box">{error}</div>}
 
       {loadingInitial ? (
-        <div className="empty-state">
-          Loading infrastructure planning data...
-        </div>
+        <div className="empty-state">Loading infrastructure planning data...</div>
       ) : (
         <>
+          {/* Top Stats Bar */}
           <motion.div
             className="stats-grid"
             variants={staggerContainer}
@@ -302,9 +282,7 @@ export default function InfrastructureOptimizer() {
             <motion.div className="stat-card" variants={cardItem}>
               <span>Total Distance</span>
               <strong>
-                {mstData?.total_distance_km != null
-                  ? `${mstData.total_distance_km}`
-                  : "N/A"}
+                {mstData?.total_distance_km != null ? `${mstData.total_distance_km} km` : "N/A"}
               </strong>
               <p>Minimum total road distance for full network connectivity</p>
             </motion.div>
@@ -316,6 +294,7 @@ export default function InfrastructureOptimizer() {
             </motion.div>
           </motion.div>
 
+          {/* Primary Data Cards */}
           <motion.div
             className="comparison-grid"
             style={{ marginBottom: "24px" }}
@@ -323,22 +302,13 @@ export default function InfrastructureOptimizer() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <motion.div
-              className="result-card"
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18 }}
-            >
+            <motion.div className="result-card" whileHover={{ y: -3 }}>
               <h3>Connectivity Summary</h3>
               <SummaryGrid items={mstSummaryItems} />
             </motion.div>
 
-            <motion.div
-              className="result-card"
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18 }}
-            >
+            <motion.div className="result-card" whileHover={{ y: -3 }}>
               <h3>Infrastructure Plan</h3>
-
               {!planData ? (
                 <div className="empty-state">No infrastructure plan available.</div>
               ) : (
@@ -348,24 +318,18 @@ export default function InfrastructureOptimizer() {
                       <span>Plan Name</span>
                       <strong>{planData.plan_name ?? "N/A"}</strong>
                     </div>
-
                     <div>
                       <span>Method</span>
                       <strong>{planData.algorithm_used ?? "N/A"}</strong>
                     </div>
-
                     <div style={{ gridColumn: "1 / -1" }}>
                       <span>Objective</span>
                       <strong>{planData.objective ?? "N/A"}</strong>
                     </div>
                   </div>
 
-                  <motion.div
-                    className="details-card optimizer-subcard"
-                    {...resultReveal}
-                  >
+                  <motion.div className="details-card optimizer-subcard" {...resultReveal}>
                     <h4>Planning Notes</h4>
-
                     {planData.planning_notes?.length ? (
                       <ul className="optimizer-notes-list">
                         {planData.planning_notes.map((note, index) => (
@@ -381,13 +345,11 @@ export default function InfrastructureOptimizer() {
             </motion.div>
           </motion.div>
 
+          {/* Expansion Section */}
           <div className="prediction-section">
             <div className="prediction-section-header">
               <h2>Expansion Planning</h2>
-              <p>
-                Simulate road expansion scenarios, compare priorities, and
-                evaluate the resulting network plan.
-              </p>
+              <p>Simulate road expansion scenarios and evaluate the resulting network plan.</p>
             </div>
 
             <div className="prediction-layout">
@@ -396,10 +358,8 @@ export default function InfrastructureOptimizer() {
                 onSubmit={handleRunExpansion}
                 initial={{ opacity: 0, x: -14 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.32, ease: "easeOut" }}
               >
                 <h3>Planning Inputs</h3>
-
                 <label className="toggle-item">
                   <input
                     type="checkbox"
@@ -433,66 +393,21 @@ export default function InfrastructureOptimizer() {
                 </label>
 
                 <div className="button-row">
-                  <motion.button
-                    {...buttonMotion}
-                    type="submit"
-                    disabled={loadingExpansion}
-                  >
+                  <motion.button {...buttonMotion} type="submit" disabled={loadingExpansion}>
                     {loadingExpansion ? "Optimizing..." : "Run Expansion Plan"}
                   </motion.button>
                 </div>
               </motion.form>
 
-              <motion.div
-                className="result-card prediction-result-card"
-                {...resultReveal}
-                key={expansionResult ? "expansion-loaded" : "expansion-empty"}
-              >
+              <motion.div className="result-card prediction-result-card" {...resultReveal}>
                 <h3>Planning Result</h3>
-
                 {!expansionResult ? (
                   <div className="empty-state prediction-empty-state">
-                    Run an expansion plan to review selected roads, total
-                    distance, total cost, and network connectivity.
+                    Run an expansion plan to review selected roads and connectivity.
                   </div>
                 ) : (
                   <>
                     <SummaryGrid items={expansionSummaryItems} />
-
-                    <motion.div
-                      className="details-card optimizer-subcard"
-                      {...resultReveal}
-                    >
-                      <h4>Planning Configuration</h4>
-                      <div className="result-grid">
-                        <div>
-                          <span>Use Potential Roads</span>
-                          <strong>
-                            {expansionResult.use_potential_roads ? "Yes" : "No"}
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>Priority</span>
-                          <strong>{expansionResult.priority ?? "N/A"}</strong>
-                        </div>
-
-                        <div>
-                          <span>Cost Per KM</span>
-                          <strong>
-                            {formatCurrency(expansionResult.cost_per_km)}
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>Planning Type</span>
-                          <strong>
-                            {expansionResult.optimization_type ?? "N/A"}
-                          </strong>
-                        </div>
-                      </div>
-                    </motion.div>
-
                     <EdgeList
                       title="Selected Roads"
                       edges={expansionResult.result?.selected_edges || []}
@@ -504,13 +419,11 @@ export default function InfrastructureOptimizer() {
             </div>
           </div>
 
+          {/* Maintenance Section */}
           <div className="prediction-section">
             <div className="prediction-section-header">
               <h2>Maintenance Planning</h2>
-              <p>
-                Generate a maintenance plan based on the available budget and
-                review the selected projects.
-              </p>
+              <p>Generate a maintenance plan based on available budget and priority scoring.</p>
             </div>
 
             <div className="prediction-layout">
@@ -519,10 +432,8 @@ export default function InfrastructureOptimizer() {
                 onSubmit={handleRunMaintenance}
                 initial={{ opacity: 0, x: -14 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.32, ease: "easeOut" }}
               >
                 <h3>Maintenance Parameters</h3>
-
                 <label>
                   Budget
                   <input
@@ -534,29 +445,17 @@ export default function InfrastructureOptimizer() {
                 </label>
 
                 <div className="button-row">
-                  <motion.button
-                    {...buttonMotion}
-                    type="submit"
-                    disabled={loadingMaintenance}
-                  >
-                    {loadingMaintenance
-                      ? "Generating..."
-                      : "Generate Maintenance Plan"}
+                  <motion.button {...buttonMotion} type="submit" disabled={loadingMaintenance}>
+                    {loadingMaintenance ? "Generating..." : "Generate Maintenance Plan"}
                   </motion.button>
                 </div>
               </motion.form>
 
-              <motion.div
-                className="result-card prediction-result-card"
-                {...resultReveal}
-                key={maintenanceResult ? "maintenance-loaded" : "maintenance-empty"}
-              >
+              <motion.div className="result-card prediction-result-card" {...resultReveal}>
                 <h3>Maintenance Result</h3>
-
                 {!maintenanceResult ? (
                   <div className="empty-state prediction-empty-state">
-                    Run maintenance planning to review selected projects, total
-                    cost, remaining budget, and benefit score.
+                    Run maintenance planning to review selected projects and benefit scores.
                   </div>
                 ) : (
                   <>
@@ -565,49 +464,23 @@ export default function InfrastructureOptimizer() {
                         <span>Method</span>
                         <strong>{maintenanceResult.algorithm ?? "N/A"}</strong>
                       </div>
-
-                      <div>
-                        <span>Budget</span>
-                        <strong>
-                          {maintenanceResult.budget != null
-                            ? formatCurrency(maintenanceResult.budget)
-                            : "N/A"}
-                        </strong>
-                      </div>
-
                       <div>
                         <span>Selected Projects</span>
-                        <strong>
-                          {maintenanceResult.selected_projects_count ?? "N/A"}
-                        </strong>
+                        <strong>{maintenanceResult.selected_projects_count ?? 0}</strong>
                       </div>
-
                       <div>
                         <span>Total Cost</span>
-                        <strong>
-                          {maintenanceResult.total_cost != null
-                            ? formatCurrency(maintenanceResult.total_cost)
-                            : "N/A"}
-                        </strong>
+                        <strong>{formatCurrency(maintenanceResult.total_cost)}</strong>
                       </div>
-
                       <div>
                         <span>Remaining Budget</span>
-                        <strong>
-                          {maintenanceResult.remaining_budget != null
-                            ? formatCurrency(maintenanceResult.remaining_budget)
-                            : "N/A"}
-                        </strong>
+                        <strong>{formatCurrency(maintenanceResult.remaining_budget)}</strong>
                       </div>
-
                       <div>
-                        <span>Total Benefit Score</span>
-                        <strong>
-                          {maintenanceResult.total_benefit_score ?? "N/A"}
-                        </strong>
+                        <span>Total Benefit</span>
+                        <strong>{maintenanceResult.total_benefit_score ?? 0}</strong>
                       </div>
                     </div>
-
                     <EdgeList
                       title="Selected Maintenance Projects"
                       edges={maintenanceProjects}

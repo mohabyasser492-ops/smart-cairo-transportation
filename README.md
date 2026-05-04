@@ -31,6 +31,7 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend-react
 npm install
+npm install react-router-dom framer-motion
 npm run dev
 ```
 

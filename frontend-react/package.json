@@ -9,7 +9,7 @@
     "framer-motion": "^12.38.0",
     "react": "latest",
     "react-dom": "latest",
-    "react-router-dom": "latest",
+    "react-router-dom": "^7.14.2",
     "recharts": "latest",
     "vite": "latest"
   }

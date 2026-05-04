@@ -721,4 +721,3 @@ export default function TrafficPrediction() {
     </motion.section>
   );
 }
-

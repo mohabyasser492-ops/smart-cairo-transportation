@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  ResponsiveContainer,
   BarChart,
-  CartesianGrid,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
-  Bar,
+  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
+import { trafficApi } from "../api/client";
+import {
+  pageTransition,
+  resultReveal,
+  staggerContainer,
+  cardItem,
+  buttonMotion,
+} from "../ui/motion";
 
 function StatusBadge({ level }) {
   const normalized = String(level || "unknown").toLowerCase();
@@ -25,11 +33,12 @@ function formatIntersectionName(item) {
     return `${item.from} → ${item.to}`;
   }
 
+  // Improved check for encoded characters or missing names
   if (item?.name && !String(item.name).includes("â")) {
     return item.name;
   }
 
-  return item?.intersection_id || "Unknown Intersection";
+  return item?.intersection_id ? `ID: ${item.intersection_id}` : "Unknown Intersection";
 }
 
 export default function TrafficSignals() {
@@ -45,7 +54,6 @@ export default function TrafficSignals() {
 
   const [loadingSignals, setLoadingSignals] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
-
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -71,12 +79,13 @@ export default function TrafficSignals() {
     loadInitialData();
   }, []);
 
+  // FIXED: Corrected state update logic
   function handleChange(event) {
     const { name, value } = event.target;
 
     setSignalForm((prev) => ({
       ...prev,
-      [name]: Number(value),
+      [name]: value === "" ? "" : Number(value),
     }));
   }
 
@@ -123,7 +132,7 @@ export default function TrafficSignals() {
 
   const averageScore = useMemo(() => {
     const rows = statuses?.intersections || [];
-    if (!rows.length) return "N/A";
+    if (!rows.length) return "0.00";
 
     const total = rows.reduce(
       (sum, row) => sum + Number(row.congestion_score || 0),
@@ -133,7 +142,9 @@ export default function TrafficSignals() {
   }, [statuses]);
 
   const worstIntersection = useMemo(() => {
-    return statuses?.intersections?.[0] || null;
+    if (!statuses?.intersections?.length) return null;
+    // Sorting to ensure we actually get the "worst" if the API doesn't pre-sort
+    return [...statuses.intersections].sort((a, b) => b.congestion_score - a.congestion_score)[0];
   }, [statuses]);
 
   return (
@@ -167,8 +178,8 @@ export default function TrafficSignals() {
 
             <motion.div className="stat-card" variants={cardItem}>
               <span>Hotspots</span>
-              <strong>{hotspots?.hotspots_count ?? "N/A"}</strong>
-              <p>Detected congestion hotspots above the configured threshold</p>
+              <strong>{hotspots?.hotspots_count ?? 0}</strong>
+              <p>Detected congestion hotspots above threshold</p>
             </motion.div>
 
             <motion.div className="stat-card" variants={cardItem}>
@@ -182,17 +193,14 @@ export default function TrafficSignals() {
               <strong>
                 {worstIntersection ? formatIntersectionName(worstIntersection) : "N/A"}
               </strong>
-              <p>Most congested intersection based on current operational status</p>
+              <p>Most congested intersection based on current status</p>
             </motion.div>
           </motion.div>
 
           <div className="prediction-section">
             <div className="prediction-section-header">
               <h2>Signal Timing Optimization</h2>
-              <p>
-                Tune the signal cycle configuration and generate optimized
-                green/red timing recommendations.
-              </p>
+              <p>Tune signal cycle configuration to generate optimized recommendations.</p>
             </div>
 
             <div className="prediction-layout">
@@ -212,6 +220,7 @@ export default function TrafficSignals() {
                     name="total_cycle_time"
                     value={signalForm.total_cycle_time}
                     onChange={handleChange}
+                    required
                   />
                 </label>
 
@@ -222,6 +231,7 @@ export default function TrafficSignals() {
                     name="min_green_time"
                     value={signalForm.min_green_time}
                     onChange={handleChange}
+                    required
                   />
                 </label>
 
@@ -232,6 +242,7 @@ export default function TrafficSignals() {
                     name="max_green_time"
                     value={signalForm.max_green_time}
                     onChange={handleChange}
+                    required
                   />
                 </label>
 
@@ -255,102 +266,56 @@ export default function TrafficSignals() {
 
                 {!signalResult ? (
                   <div className="empty-state prediction-empty-state">
-                    Run signal timing optimization to review recommended
-                    green/red durations, congestion levels, and expected
-                    waiting-time reduction.
+                    Run optimization to review recommended durations.
                   </div>
                 ) : (
                   <>
                     <div className="result-grid">
                       <div>
                         <span>Method</span>
-                        <strong>{signalResult.algorithm ?? "N/A"}</strong>
+                        <strong>{signalResult.algorithm ?? "AI-Optimized"}</strong>
                       </div>
-
                       <div>
-                        <span>Optimized Intersections</span>
-                        <strong>
-                          {signalResult.optimized_intersections_count ?? "N/A"}
-                        </strong>
+                        <span>Intersections</span>
+                        <strong>{signalResult.optimized_intersections_count ?? 0}</strong>
                       </div>
-
                       <div>
-                        <span>Total Cycle Time</span>
-                        <strong>{signalResult.total_cycle_time_sec ?? "N/A"} sec</strong>
-                      </div>
-
-                      <div>
-                        <span>Min Green Time</span>
-                        <strong>{signalResult.min_green_time_sec ?? "N/A"} sec</strong>
-                      </div>
-
-                      <div>
-                        <span>Max Green Time</span>
-                        <strong>{signalResult.max_green_time_sec ?? "N/A"} sec</strong>
+                        <span>Total Cycle</span>
+                        <strong>{signalResult.total_cycle_time_sec}s</strong>
                       </div>
                     </div>
 
-                    <motion.div
-                      className="details-card prediction-subcard"
-                      {...resultReveal}
-                    >
+                    <motion.div className="details-card prediction-subcard" {...resultReveal}>
                       <h4>Top Optimized Intersections</h4>
-
-                      {topSignals.length ? (
-                        <div className="signal-list">
-                          {topSignals.map((signal) => (
-                            <motion.div
-                              key={signal.intersection_id}
-                              className="signal-item"
-                              whileHover={{ y: -3 }}
-                              transition={{ duration: 0.18 }}
-                            >
-                              <div>
-                                <strong>{formatIntersectionName(signal)}</strong>
-                                <div className="segment-subtext">
-                                  Intersection ID: {signal.intersection_id}
-                                </div>
-                              </div>
-
-                              <div className="signal-metrics">
-                                <StatusBadge level={signal.congestion_level} />
-                                <span>Green: {signal.recommended_green_time_sec}s</span>
-                                <span>Red: {signal.recommended_red_time_sec}s</span>
-                                <span>
-                                  Waiting reduction:{" "}
-                                  {signal.expected_waiting_time_reduction_percentage}%
-                                </span>
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="empty-state">
-                          No optimized intersections available.
-                        </div>
-                      )}
+                      <div className="signal-list">
+                        {topSignals.map((signal) => (
+                          <div key={signal.intersection_id} className="signal-item">
+                            <div>
+                              <strong>{formatIntersectionName(signal)}</strong>
+                              <div className="segment-subtext">ID: {signal.intersection_id}</div>
+                            </div>
+                            <div className="signal-metrics">
+                              <StatusBadge level={signal.congestion_level} />
+                              <span>G: {signal.recommended_green_time_sec}s</span>
+                              <span>R: {signal.recommended_red_time_sec}s</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </motion.div>
 
-                    <motion.div
-                      className="details-card prediction-subcard"
-                      {...resultReveal}
-                    >
+                    <motion.div className="details-card prediction-subcard" {...resultReveal}>
                       <h4>Green vs Red Time Chart</h4>
-
-                      {signalChartData.length ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={signalChartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="intersection" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="green" name="Green Time (sec)" />
-                            <Bar dataKey="red" name="Red Time (sec)" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="empty-state">No chart data available.</div>
-                      )}
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={signalChartData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="intersection" hide />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="green" fill="#4ade80" name="Green Time" />
+                          <Bar dataKey="red" fill="#f87171" name="Red Time" />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </motion.div>
                   </>
                 )}
@@ -358,149 +323,35 @@ export default function TrafficSignals() {
             </div>
           </div>
 
-          <motion.div
-            className="comparison-grid"
-            style={{ marginBottom: "24px" }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            <motion.div
-              className="result-card"
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18 }}
-            >
+          <div className="comparison-grid" style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            <motion.div className="result-card" whileHover={{ y: -3 }}>
               <h3>Congestion Hotspots</h3>
-
-              {!hotspots ? (
-                <div className="empty-state">No hotspot data available.</div>
-              ) : hotspots.hotspots_count === 0 ? (
-                <div className="empty-state">
-                  No congestion hotspots were detected above the current threshold.
-                </div>
-              ) : (
-                <div className="signal-list">
-                  {hotspots.hotspots.map((spot) => (
-                    <motion.div
-                      key={spot.intersection_id}
-                      className="signal-item"
-                      whileHover={{ y: -3 }}
-                      transition={{ duration: 0.18 }}
-                    >
-                      <div>
-                        <strong>{spot.name || spot.intersection_id}</strong>
-                        <div className="segment-subtext">
-                          Flow: {spot.incoming_flow} / Capacity: {spot.capacity}
-                        </div>
-                      </div>
-
-                      <div className="signal-metrics">
-                        <StatusBadge level={spot.severity} />
-                        <span>Score: {spot.congestion_score}</span>
-                        <span>Wait: {spot.average_waiting_time}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-
-            <motion.div
-              className="result-card"
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18 }}
-            >
-              <h3>Performance Overview</h3>
-
-              {!statuses?.intersections?.length ? (
-                <div className="empty-state">
-                  No intersection status data available.
-                </div>
-              ) : (
-                <>
-                  <div className="result-grid">
-                    <div>
-                      <span>Total Intersections</span>
-                      <strong>{statuses.intersections_count}</strong>
-                    </div>
-
-                    <div>
-                      <span>Average Congestion Score</span>
-                      <strong>{averageScore}</strong>
-                    </div>
-
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <span>Worst Intersection</span>
-                      <strong>
-                        {worstIntersection
-                          ? `${formatIntersectionName(
-                              worstIntersection
-                            )} (${worstIntersection.congestion_score})`
-                          : "N/A"}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <motion.div
-                    className="details-card prediction-subcard"
-                    {...resultReveal}
-                  >
-                    <h4>Top Congestion Scores</h4>
-
-                    {statusChartData.length ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={statusChartData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="intersection" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="score" name="Congestion Score" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="empty-state">No chart data available.</div>
-                    )}
-                  </motion.div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-
-          <motion.div className="result-card" {...resultReveal}>
-            <h3>Intersection Details</h3>
-
-            {!statuses?.intersections?.length ? (
-              <div className="empty-state">
-                No detailed intersection status available.
-              </div>
-            ) : (
               <div className="signal-list">
-                {statuses.intersections.slice(0, 12).map((item) => (
-                  <motion.div
-                    key={item.intersection_id}
-                    className="signal-item"
-                    whileHover={{ y: -3 }}
-                    transition={{ duration: 0.18 }}
-                  >
+                {hotspots?.hotspots?.map((spot) => (
+                  <div key={spot.intersection_id} className="signal-item">
                     <div>
-                      <strong>{formatIntersectionName(item)}</strong>
-                      <div className="segment-subtext">
-                        ID: {item.intersection_id}
-                      </div>
+                      <strong>{spot.name || spot.intersection_id}</strong>
+                      <div className="segment-subtext">Flow: {spot.incoming_flow}</div>
                     </div>
-
-                    <div className="signal-metrics">
-                      <StatusBadge level={item.status} />
-                      <span>Flow: {item.incoming_flow}</span>
-                      <span>Capacity: {item.capacity}</span>
-                      <span>Wait: {item.average_waiting_time}</span>
-                      <span>Score: {item.congestion_score}</span>
-                    </div>
-                  </motion.div>
-                ))}
+                    <StatusBadge level={spot.severity} />
+                  </div>
+                )) || <div className="empty-state">No hotspots found</div>}
               </div>
-            )}
-          </motion.div>
+            </motion.div>
+
+            <motion.div className="result-card" whileHover={{ y: -3 }}>
+              <h3>Performance Overview</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={statusChartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="intersection" hide />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="score" fill="#6366f1" name="Score" />
+                </BarChart>
+              </ResponsiveContainer>
+            </motion.div>
+          </div>
         </>
       )}
     </motion.section>

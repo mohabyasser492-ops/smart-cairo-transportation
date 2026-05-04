@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const NODE_COLORS = {
   Residential: "#2563eb",
@@ -21,78 +21,22 @@ function normalizeRoadKey(a, b) {
   return [String(a), String(b)].sort().join("::");
 }
 
-function buildNodeLookup(neighborhoods, facilities) {
-  const lookup = {};
-
-  neighborhoods.forEach((item) => {
-    lookup[String(item.id)] = {
-      ...item,
-      category: "neighborhood",
-    };
-  });
-
-  facilities.forEach((item) => {
-    lookup[String(item.id)] = {
-      ...item,
-      category: "facility",
-    };
-  });
-
-  return lookup;
-}
-
-function buildTrafficLookup(trafficFlow) {
-  const lookup = {};
-
-  trafficFlow.forEach((record) => {
-    const roadId = String(record.road_id || record.id || "");
-    lookup[roadId] = record;
-  });
-
-  return lookup;
-}
-
-function buildMstLookup(mstData) {
-  const lookup = {};
-
-  if (!mstData?.selected_edges) return lookup;
-
-  mstData.selected_edges.forEach((edge) => {
-    if (edge.source && edge.destination) {
-      lookup[normalizeRoadKey(edge.source, edge.destination)] = true;
-    }
-  });
-
-  return lookup;
-}
-
-function getTrafficStyle(edge, trafficLookup, selectedTime) {
-  const traffic = trafficLookup[edge.id];
+function getTrafficStyle(road, trafficLookup, selectedTime) {
+  const traffic = trafficLookup[String(road.id)];
   const flow = traffic?.[selectedTime];
+  const capacity = Number(road.capacity_vehicles_per_hour || 0);
 
-  if (flow === undefined || edge.capacity_vehicles_per_hour == null) {
-    return {
-      stroke: "#94a3b8",
-      width: 2,
-      opacity: 0.65,
-    };
+  if (flow == null || !capacity) {
+    return { stroke: "#94a3b8", width: 2, opacity: 0.7 };
   }
 
-  const ratio = flow / edge.capacity_vehicles_per_hour;
+  const ratio = flow / capacity;
 
-  if (ratio >= 1.0) {
-    return { stroke: "#dc2626", width: 5, opacity: 0.95 };
-  }
+  if (ratio >= 1.0) return { stroke: "#dc2626", width: 5, opacity: 0.95 };
+  if (ratio >= 0.8) return { stroke: "#f97316", width: 4, opacity: 0.92 };
+  if (ratio >= 0.6) return { stroke: "#eab308", width: 3.5, opacity: 0.9 };
 
-  if (ratio >= 0.8) {
-    return { stroke: "#f97316", width: 4, opacity: 0.92 };
-  }
-
-  if (ratio >= 0.6) {
-    return { stroke: "#eab308", width: 3.5, opacity: 0.9 };
-  }
-
-  return { stroke: "#16a34a", width: 3, opacity: 0.82 };
+  return { stroke: "#16a34a", width: 3, opacity: 0.85 };
 }
 
 function shortenLabel(name) {
@@ -126,9 +70,46 @@ export default function GraphMap({
   const height = 700;
   const padding = 72;
 
-  const nodeLookup = buildNodeLookup(neighborhoods, facilities);
-  const trafficLookup = buildTrafficLookup(trafficFlow);
-  const mstLookup = buildMstLookup(mstData);
+  const nodeLookup = useMemo(() => {
+    const lookup = {};
+
+    neighborhoods.forEach((item) => {
+      lookup[String(item.id)] = {
+        ...item,
+        nodeCategory: "neighborhood",
+      };
+    });
+
+    facilities.forEach((item) => {
+      lookup[String(item.id)] = {
+        ...item,
+        nodeCategory: "facility",
+      };
+    });
+
+    return lookup;
+  }, [neighborhoods, facilities]);
+
+  const trafficLookup = useMemo(() => {
+    const lookup = {};
+    trafficFlow.forEach((record) => {
+      lookup[String(record.road_id || record.id || "")] = record;
+    });
+    return lookup;
+  }, [trafficFlow]);
+
+  const mstLookup = useMemo(() => {
+    const lookup = {};
+    if (!mstData?.selected_edges) return lookup;
+
+    mstData.selected_edges.forEach((edge) => {
+      if (edge.source && edge.destination) {
+        lookup[normalizeRoadKey(edge.source, edge.destination)] = true;
+      }
+    });
+
+    return lookup;
+  }, [mstData]);
 
   const allNodes = [
     ...(showNeighborhoods ? neighborhoods : []),
@@ -141,7 +122,6 @@ export default function GraphMap({
 
   const xs = allNodes.map((node) => Number(node.x));
   const ys = allNodes.map((node) => Number(node.y));
-
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
@@ -160,7 +140,7 @@ export default function GraphMap({
   }
 
   function getNodeRadius(node) {
-    if (node.category === "facility") return 8;
+    if (node.nodeCategory === "facility") return 8;
 
     const population = Number(node.population || 0);
 
@@ -173,11 +153,9 @@ export default function GraphMap({
 
   function shouldShowLabel(node, isSelected, isHovered) {
     if (isSelected || isHovered) return true;
-    if (node.category === "facility") return true;
+    if (node.nodeCategory === "facility") return true;
 
     const population = Number(node.population || 0);
-
-    // show only important neighborhood labels by default
     return population >= 400000;
   }
 
@@ -208,11 +186,7 @@ export default function GraphMap({
 
           const isMstEdge = Boolean(mstLookup[roadKey]);
 
-          let style = {
-            stroke: "#94a3b8",
-            width: 2,
-            opacity: 0.6,
-          };
+          let style = { stroke: "#94a3b8", width: 2, opacity: 0.7 };
 
           if (showTrafficOverlay) {
             style = getTrafficStyle(road, trafficLookup, selectedTime);
@@ -220,16 +194,9 @@ export default function GraphMap({
 
           if (showMstOverlay) {
             if (isMstEdge) {
-              style = {
-                stroke: "#10b981",
-                width: 5,
-                opacity: 1,
-              };
+              style = { stroke: "#10b981", width: 5, opacity: 1 };
             } else {
-              style = {
-                ...style,
-                opacity: 0.22,
-              };
+              style = { ...style, opacity: 0.22 };
             }
           }
 
@@ -263,196 +230,173 @@ export default function GraphMap({
         className="graph-map-svg"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Smart Cairo transportation network map"
+        aria-label="Network map"
       >
-        <rect x="0" y="0" width={width} height={height} fill="#f8fafc" />
+        {Array.from({ length: 10 }).map((_, index) => {
+          const x = padding + (index * (width - padding * 2)) / 9;
 
-        <g className="map-grid">
-          {Array.from({ length: 10 }).map((_, index) => {
-            const x = padding + (index * (width - padding * 2)) / 9;
-            return (
+          return (
+            <line
+              key={`grid-x-${index}`}
+              x1={x}
+              y1={padding}
+              x2={x}
+              y2={height - padding}
+              stroke="#e2e8f0"
+              strokeWidth="1"
+            />
+          );
+        })}
+
+        {Array.from({ length: 8 }).map((_, index) => {
+          const y = padding + (index * (height - padding * 2)) / 7;
+
+          return (
+            <line
+              key={`grid-y-${index}`}
+              x1={padding}
+              y1={y}
+              x2={width - padding}
+              y2={y}
+              stroke="#e2e8f0"
+              strokeWidth="1"
+            />
+          );
+        })}
+
+        {renderedExistingRoads.map((road) => {
+          const isSelected =
+            selectedElement?.kind === "edge" &&
+            selectedElement?.data?.id === road.id;
+
+          const isHovered = hoveredEdgeId === road.id;
+
+          return (
+            <g key={`existing-${road.id}`}>
               <line
-                key={`v-${index}`}
-                x1={x}
-                y1={padding / 2}
-                x2={x}
-                y2={height - padding / 2}
-                stroke="#e2e8f0"
-                strokeWidth="1"
+                x1={road.fromPoint.x}
+                y1={road.fromPoint.y}
+                x2={road.toPoint.x}
+                y2={road.toPoint.y}
+                stroke={road.style.stroke}
+                strokeWidth={
+                  isSelected || isHovered ? road.style.width + 1 : road.style.width
+                }
+                opacity={road.style.opacity}
+                className="map-edge"
               />
-            );
-          })}
-          {Array.from({ length: 8 }).map((_, index) => {
-            const y = padding + (index * (height - padding * 2)) / 7;
-            return (
+
               <line
-                key={`h-${index}`}
-                x1={padding / 2}
-                y1={y}
-                x2={width - padding / 2}
-                y2={y}
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-            );
-          })}
-        </g>
-
-        <g className="existing-roads-layer">
-          {renderedExistingRoads.map((road) => {
-            const isSelected =
-              selectedElement?.kind === "edge" &&
-              selectedElement?.data?.id === road.id;
-
-            const isHovered = hoveredEdgeId === road.id;
-
-            return (
-              <g key={`existing-${road.id}`}>
-                <line
-                  x1={road.fromPoint.x}
-                  y1={road.fromPoint.y}
-                  x2={road.toPoint.x}
-                  y2={road.toPoint.y}
-                  stroke="transparent"
-                  strokeWidth="14"
-                  onMouseEnter={() => setHoveredEdgeId(road.id)}
-                  onMouseLeave={() => setHoveredEdgeId(null)}
-                  onClick={() =>
-                    onSelectEdge?.({
-                      ...road,
-                      roadCategory: "existing",
-                      flow: trafficLookup[road.id]?.[selectedTime] ?? null,
-                    })
-                  }
-                  className="map-edge-hitbox"
-                />
-
-                <line
-                  x1={road.fromPoint.x}
-                  y1={road.fromPoint.y}
-                  x2={road.toPoint.x}
-                  y2={road.toPoint.y}
-                  stroke={
-                    isSelected
-                      ? "#0f172a"
-                      : isHovered
-                      ? "#334155"
-                      : road.style.stroke
-                  }
-                  strokeWidth={
-                    isSelected
-                      ? road.style.width + 2.5
-                      : isHovered
-                      ? road.style.width + 1.5
-                      : road.style.width
-                  }
-                  opacity={road.style.opacity}
-                  className="map-edge"
-                />
-              </g>
-            );
-          })}
-        </g>
-
-        <g className="potential-roads-layer">
-          {renderedPotentialRoads.map((road) => {
-            const isSelected =
-              selectedElement?.kind === "edge" &&
-              selectedElement?.data?.id === road.id;
-
-            const isHovered = hoveredEdgeId === road.id;
-
-            return (
-              <g key={`potential-${road.id}`}>
-                <line
-                  x1={road.fromPoint.x}
-                  y1={road.fromPoint.y}
-                  x2={road.toPoint.x}
-                  y2={road.toPoint.y}
-                  stroke="transparent"
-                  strokeWidth="14"
-                  onMouseEnter={() => setHoveredEdgeId(road.id)}
-                  onMouseLeave={() => setHoveredEdgeId(null)}
-                  onClick={() =>
-                    onSelectEdge?.({
-                      ...road,
-                      roadCategory: "potential",
-                    })
-                  }
-                  className="map-edge-hitbox"
-                />
-
-                <line
-                  x1={road.fromPoint.x}
-                  y1={road.fromPoint.y}
-                  x2={road.toPoint.x}
-                  y2={road.toPoint.y}
-                  stroke={isSelected ? "#7c2d12" : isHovered ? "#9a3412" : "#fb923c"}
-                  strokeWidth={isSelected ? 4.5 : isHovered ? 4 : 3}
-                  strokeDasharray="10 8"
-                  opacity="0.82"
-                  className="map-edge"
-                />
-              </g>
-            );
-          })}
-        </g>
-
-        <g className="nodes-layer">
-          {allNodes.map((node) => {
-            const point = mapPoint(node.x, node.y);
-            const fill = NODE_COLORS[node.type] || DEFAULT_NODE_COLOR;
-            const radius = getNodeRadius(node);
-
-            const isSelected =
-              selectedElement?.kind === "node" &&
-              selectedElement?.data?.id === node.id;
-
-            const isHovered = hoveredNodeId === node.id;
-
-            const labelVisible = shouldShowLabel(node, isSelected, isHovered);
-            const labelText =
-              isSelected || isHovered ? node.name : shortenLabel(node.name);
-
-            return (
-              <g
-                key={`node-${node.id}`}
-                transform={`translate(${point.x}, ${point.y})`}
+                x1={road.fromPoint.x}
+                y1={road.fromPoint.y}
+                x2={road.toPoint.x}
+                y2={road.toPoint.y}
+                stroke="transparent"
+                strokeWidth="14"
+                className="map-edge-hitbox"
+                onMouseEnter={() => setHoveredEdgeId(road.id)}
+                onMouseLeave={() => setHoveredEdgeId(null)}
                 onClick={() =>
-                  onSelectNode?.({
-                    ...node,
-                    category:
-                      neighborhoods.find((item) => item.id === node.id) != null
-                        ? "neighborhood"
-                        : "facility",
+                  onSelectEdge?.({
+                    ...road,
+                    roadCategory: "existing",
+                    flow: trafficLookup[String(road.id)]?.[selectedTime] ?? null,
                   })
                 }
-                onMouseEnter={() => setHoveredNodeId(node.id)}
-                onMouseLeave={() => setHoveredNodeId(null)}
-                className="map-node"
-              >
-                <circle
-                  r={isSelected ? radius + 4 : isHovered ? radius + 2 : radius}
-                  fill={fill}
-                  stroke={isSelected ? "#0f172a" : "#ffffff"}
-                  strokeWidth={isSelected ? 3 : 2}
-                />
+              />
+            </g>
+          );
+        })}
 
-                {labelVisible && (
-                  <text
-                    x="12"
-                    y="4"
-                    className={`map-node-label ${
-                      isSelected ? "selected" : isHovered ? "hovered" : ""
-                    }`}
-                  >
-                    {labelText}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </g>
+        {renderedPotentialRoads.map((road) => {
+          const isSelected =
+            selectedElement?.kind === "edge" &&
+            selectedElement?.data?.id === road.id;
+
+          const isHovered = hoveredEdgeId === road.id;
+
+          return (
+            <g key={`potential-${road.id || `${road.from}-${road.to}`}`}>
+              <line
+                x1={road.fromPoint.x}
+                y1={road.fromPoint.y}
+                x2={road.toPoint.x}
+                y2={road.toPoint.y}
+                stroke="#fb923c"
+                strokeDasharray="8 6"
+                strokeWidth={isSelected || isHovered ? 4 : 3}
+                opacity={0.9}
+                className="map-edge"
+              />
+
+              <line
+                x1={road.fromPoint.x}
+                y1={road.fromPoint.y}
+                x2={road.toPoint.x}
+                y2={road.toPoint.y}
+                stroke="transparent"
+                strokeWidth="14"
+                className="map-edge-hitbox"
+                onMouseEnter={() => setHoveredEdgeId(road.id)}
+                onMouseLeave={() => setHoveredEdgeId(null)}
+                onClick={() =>
+                  onSelectEdge?.({
+                    ...road,
+                    roadCategory: "potential",
+                  })
+                }
+              />
+            </g>
+          );
+        })}
+
+        {allNodes.map((node) => {
+          const nodeData = nodeLookup[String(node.id)] || node;
+          const point = mapPoint(node.x, node.y);
+          const fill = NODE_COLORS[node.type] || DEFAULT_NODE_COLOR;
+          const radius = getNodeRadius(nodeData);
+
+          const isSelected =
+            selectedElement?.kind === "node" &&
+            selectedElement?.data?.id === node.id;
+
+          const isHovered = hoveredNodeId === node.id;
+          const labelVisible = shouldShowLabel(nodeData, isSelected, isHovered);
+          const labelText =
+            isSelected || isHovered ? node.name : shortenLabel(node.name);
+
+          return (
+            <g
+              key={`node-${node.id}`}
+              className="map-node"
+              onClick={() => onSelectNode?.(nodeData)}
+              onMouseEnter={() => setHoveredNodeId(node.id)}
+              onMouseLeave={() => setHoveredNodeId(null)}
+            >
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r={isSelected || isHovered ? radius + 1.5 : radius}
+                fill={fill}
+                stroke="#ffffff"
+                strokeWidth="3"
+              />
+
+              {labelVisible && (
+                <text
+                  x={point.x}
+                  y={point.y - (radius + 10)}
+                  textAnchor="middle"
+                  className={`map-node-label ${
+                    isSelected ? "selected" : isHovered ? "hovered" : ""
+                  }`}
+                >
+                  {labelText}
+                </text>
+              )}
+            </g>
+          );
+        })}
       </svg>
     </div>
   );

@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.network_routes import router as network_router
-from app.api.transit_routes import router as transit_router
-from app.api.routes import router as base_router
+
 from app.api.data_routes import router as data_router
+from app.api.network_routes import router as network_router
+from app.api.prediction_routes import router as prediction_router
+from app.api.routes import router as base_router
 from app.api.routing_routes import router as routing_router
 from app.api.traffic_routes import router as traffic_router
-from app.api.prediction_routes import router as prediction_router
+from app.api.transit_routes import router as transit_router
 from app.core.config import settings
-
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -16,15 +16,16 @@ app = FastAPI(
     description="Backend API for Smart Cairo Transportation System",
 )
 
+cors_origins = settings.BACKEND_CORS_ORIGINS or ["*"]
+allow_all_origins = cors_origins == ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=not allow_all_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 app.include_router(base_router, prefix=settings.API_PREFIX)
 app.include_router(data_router, prefix=settings.API_PREFIX)
@@ -43,5 +44,7 @@ def root():
         "data": {
             "docs": "/docs",
             "health": f"{settings.API_PREFIX}/health",
+            "version": settings.VERSION,
+            "environment": settings.ENVIRONMENT,
         },
     }
