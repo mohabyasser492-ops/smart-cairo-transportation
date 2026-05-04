@@ -4,14 +4,22 @@ from app.algorithms.kruskal_mst import kruskal_minimum_spanning_tree
 from app.services.data_service import data_service
 from app.algorithms.dp_maintenance import optimize_maintenance_plan
 
+
 class NetworkService:
     def get_minimum_spanning_tree(self) -> Dict[str, Any]:
-        nodes = self._get_neighborhood_names()
+        neighborhood_names = self._get_neighborhood_names()
         edges = self._get_existing_road_edges(cost_per_km=1)
 
+        # Keep only neighborhood-to-neighborhood edges for the MST
+        filtered_edges = [
+            edge
+            for edge in edges
+            if edge["source"] in neighborhood_names and edge["destination"] in neighborhood_names
+        ]
+
         return kruskal_minimum_spanning_tree(
-            nodes=nodes,
-            edges=edges,
+            nodes=neighborhood_names,
+            edges=filtered_edges,
             weight_key="distance_km",
         )
 
@@ -36,20 +44,26 @@ class NetworkService:
         cost_per_km: float = 10_000_000,
         priority: str = "cost",
     ) -> Dict[str, Any]:
-        nodes = self._get_neighborhood_names()
+        neighborhood_names = self._get_neighborhood_names()
         edges = self._get_existing_road_edges(cost_per_km=cost_per_km)
 
         if use_potential_roads:
             edges.extend(self._get_potential_road_edges(cost_per_km=cost_per_km))
 
-        weight_key = "construction_cost"
+        # Keep only neighborhood-to-neighborhood edges
+        filtered_edges = [
+            edge
+            for edge in edges
+            if edge["source"] in neighborhood_names and edge["destination"] in neighborhood_names
+        ]
 
+        weight_key = "construction_cost"
         if priority == "distance":
             weight_key = "distance_km"
 
         mst_result = kruskal_minimum_spanning_tree(
-            nodes=nodes,
-            edges=edges,
+            nodes=neighborhood_names,
+            edges=filtered_edges,
             weight_key=weight_key,
         )
 
@@ -159,11 +173,24 @@ class NetworkService:
             possible_keys=["neighborhoods", "data", "items", "records"],
         )
 
+        facilities_data = data_service.get_facilities()
+        facilities = self._extract_list(
+            facilities_data,
+            possible_keys=["facilities", "data", "items", "records"],
+        )
+
         lookup = {}
 
         for neighborhood in neighborhoods:
             node_id = neighborhood.get("id")
             node_name = neighborhood.get("name")
+
+            if node_id is not None and node_name is not None:
+                lookup[str(node_id)] = node_name
+
+        for facility in facilities:
+            node_id = facility.get("id")
+            node_name = facility.get("name")
 
             if node_id is not None and node_name is not None:
                 lookup[str(node_id)] = node_name
@@ -181,14 +208,13 @@ class NetworkService:
                     return data[key]
 
         return []
-    
+
     def create_maintenance_plan(self, budget: float) -> Dict[str, Any]:
         existing_edges = self._get_existing_road_edges(cost_per_km=1)
         maintenance_projects = []
 
         for edge in existing_edges:
             condition = edge.get("condition")
-
             if condition is None:
                 condition = 5
 

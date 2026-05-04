@@ -68,3 +68,47 @@ export const routingApi = {
     return apiPost("/api/routing/emergency", payload);
   },
 };
+
+export const dataApi = {
+  getNeighborhoods() {
+    return apiGet("/api/data/neighborhoods");
+  },
+
+  getFacilities() {
+    return apiGet("/api/data/facilities");
+  },
+
+  getExistingRoads() {
+    return apiGet("/api/data/roads/existing");
+  },
+
+  getPotentialRoads() {
+    return apiGet("/api/data/roads/potential");
+  },
+
+  getTrafficFlow() {
+    return apiGet("/api/data/traffic-flow");
+  },
+
+  getMetroLines() {
+    return apiGet("/api/data/metro-lines");
+  },
+
+  getBusRoutes() {
+    return apiGet("/api/data/bus-routes");
+  },
+
+  getSummary() {
+    return apiGet("/api/data/summary");
+  },
+};
+
+export const networkApi = {
+  getMinimumSpanningTree() {
+    return apiGet("/api/network/minimum-spanning-tree");
+  },
+
+  getInfrastructurePlan() {
+    return apiGet("/api/network/infrastructure-plan");
+  },
+};
