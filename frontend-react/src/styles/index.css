@@ -583,3 +583,26 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+.map-node-label {
+  font-size: 12px;
+  fill: #0f172a;
+  font-weight: 700;
+  user-select: none;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.map-node-label.hovered,
+.map-node-label.selected {
+  font-size: 13px;
+}
+
+.map-edge-hitbox {
+  cursor: pointer;
+}
+
+.map-edge {
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease;
+}

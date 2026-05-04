@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const NODE_COLORS = {
   Residential: "#2563eb",
   Mixed: "#16a34a",
@@ -72,7 +74,7 @@ function getTrafficStyle(edge, trafficLookup, selectedTime) {
     return {
       stroke: "#94a3b8",
       width: 2,
-      opacity: 0.85,
+      opacity: 0.65,
     };
   }
 
@@ -83,14 +85,20 @@ function getTrafficStyle(edge, trafficLookup, selectedTime) {
   }
 
   if (ratio >= 0.8) {
-    return { stroke: "#f97316", width: 4, opacity: 0.95 };
+    return { stroke: "#f97316", width: 4, opacity: 0.92 };
   }
 
   if (ratio >= 0.6) {
-    return { stroke: "#eab308", width: 3.5, opacity: 0.95 };
+    return { stroke: "#eab308", width: 3.5, opacity: 0.9 };
   }
 
-  return { stroke: "#16a34a", width: 3, opacity: 0.9 };
+  return { stroke: "#16a34a", width: 3, opacity: 0.82 };
+}
+
+function shortenLabel(name) {
+  if (!name) return "";
+  if (name.length <= 14) return name;
+  return `${name.slice(0, 13)}…`;
 }
 
 export default function GraphMap({
@@ -111,9 +119,12 @@ export default function GraphMap({
   onSelectNode,
   onSelectEdge,
 }) {
-  const width = 980;
-  const height = 620;
-  const padding = 60;
+  const [hoveredNodeId, setHoveredNodeId] = useState(null);
+  const [hoveredEdgeId, setHoveredEdgeId] = useState(null);
+
+  const width = 1060;
+  const height = 700;
+  const padding = 72;
 
   const nodeLookup = buildNodeLookup(neighborhoods, facilities);
   const trafficLookup = buildTrafficLookup(trafficFlow);
@@ -160,6 +171,16 @@ export default function GraphMap({
     return 8;
   }
 
+  function shouldShowLabel(node, isSelected, isHovered) {
+    if (isSelected || isHovered) return true;
+    if (node.category === "facility") return true;
+
+    const population = Number(node.population || 0);
+
+    // show only important neighborhood labels by default
+    return population >= 400000;
+  }
+
   function resolveRoadEndpoints(road) {
     const fromNode = nodeLookup[String(road.from)];
     const toNode = nodeLookup[String(road.to)];
@@ -190,19 +211,26 @@ export default function GraphMap({
           let style = {
             stroke: "#94a3b8",
             width: 2,
-            opacity: 0.8,
+            opacity: 0.6,
           };
 
           if (showTrafficOverlay) {
             style = getTrafficStyle(road, trafficLookup, selectedTime);
           }
 
-          if (showMstOverlay && isMstEdge) {
-            style = {
-              stroke: "#10b981",
-              width: 5,
-              opacity: 1,
-            };
+          if (showMstOverlay) {
+            if (isMstEdge) {
+              style = {
+                stroke: "#10b981",
+                width: 5,
+                opacity: 1,
+              };
+            } else {
+              style = {
+                ...style,
+                opacity: 0.22,
+              };
+            }
           }
 
           return {
@@ -240,8 +268,8 @@ export default function GraphMap({
         <rect x="0" y="0" width={width} height={height} fill="#f8fafc" />
 
         <g className="map-grid">
-          {Array.from({ length: 8 }).map((_, index) => {
-            const x = padding + (index * (width - padding * 2)) / 7;
+          {Array.from({ length: 10 }).map((_, index) => {
+            const x = padding + (index * (width - padding * 2)) / 9;
             return (
               <line
                 key={`v-${index}`}
@@ -254,8 +282,8 @@ export default function GraphMap({
               />
             );
           })}
-          {Array.from({ length: 6 }).map((_, index) => {
-            const y = padding + (index * (height - padding * 2)) / 5;
+          {Array.from({ length: 8 }).map((_, index) => {
+            const y = padding + (index * (height - padding * 2)) / 7;
             return (
               <line
                 key={`h-${index}`}
@@ -276,6 +304,8 @@ export default function GraphMap({
               selectedElement?.kind === "edge" &&
               selectedElement?.data?.id === road.id;
 
+            const isHovered = hoveredEdgeId === road.id;
+
             return (
               <g key={`existing-${road.id}`}>
                 <line
@@ -283,9 +313,10 @@ export default function GraphMap({
                   y1={road.fromPoint.y}
                   x2={road.toPoint.x}
                   y2={road.toPoint.y}
-                  stroke={isSelected ? "#0f172a" : road.style.stroke}
-                  strokeWidth={isSelected ? road.style.width + 2 : road.style.width}
-                  opacity={road.style.opacity}
+                  stroke="transparent"
+                  strokeWidth="14"
+                  onMouseEnter={() => setHoveredEdgeId(road.id)}
+                  onMouseLeave={() => setHoveredEdgeId(null)}
                   onClick={() =>
                     onSelectEdge?.({
                       ...road,
@@ -293,6 +324,29 @@ export default function GraphMap({
                       flow: trafficLookup[road.id]?.[selectedTime] ?? null,
                     })
                   }
+                  className="map-edge-hitbox"
+                />
+
+                <line
+                  x1={road.fromPoint.x}
+                  y1={road.fromPoint.y}
+                  x2={road.toPoint.x}
+                  y2={road.toPoint.y}
+                  stroke={
+                    isSelected
+                      ? "#0f172a"
+                      : isHovered
+                      ? "#334155"
+                      : road.style.stroke
+                  }
+                  strokeWidth={
+                    isSelected
+                      ? road.style.width + 2.5
+                      : isHovered
+                      ? road.style.width + 1.5
+                      : road.style.width
+                  }
+                  opacity={road.style.opacity}
                   className="map-edge"
                 />
               </g>
@@ -306,25 +360,40 @@ export default function GraphMap({
               selectedElement?.kind === "edge" &&
               selectedElement?.data?.id === road.id;
 
+            const isHovered = hoveredEdgeId === road.id;
+
             return (
-              <line
-                key={`potential-${road.id}`}
-                x1={road.fromPoint.x}
-                y1={road.fromPoint.y}
-                x2={road.toPoint.x}
-                y2={road.toPoint.y}
-                stroke={isSelected ? "#7c2d12" : "#fb923c"}
-                strokeWidth={isSelected ? 4 : 3}
-                strokeDasharray="10 8"
-                opacity="0.85"
-                onClick={() =>
-                  onSelectEdge?.({
-                    ...road,
-                    roadCategory: "potential",
-                  })
-                }
-                className="map-edge"
-              />
+              <g key={`potential-${road.id}`}>
+                <line
+                  x1={road.fromPoint.x}
+                  y1={road.fromPoint.y}
+                  x2={road.toPoint.x}
+                  y2={road.toPoint.y}
+                  stroke="transparent"
+                  strokeWidth="14"
+                  onMouseEnter={() => setHoveredEdgeId(road.id)}
+                  onMouseLeave={() => setHoveredEdgeId(null)}
+                  onClick={() =>
+                    onSelectEdge?.({
+                      ...road,
+                      roadCategory: "potential",
+                    })
+                  }
+                  className="map-edge-hitbox"
+                />
+
+                <line
+                  x1={road.fromPoint.x}
+                  y1={road.fromPoint.y}
+                  x2={road.toPoint.x}
+                  y2={road.toPoint.y}
+                  stroke={isSelected ? "#7c2d12" : isHovered ? "#9a3412" : "#fb923c"}
+                  strokeWidth={isSelected ? 4.5 : isHovered ? 4 : 3}
+                  strokeDasharray="10 8"
+                  opacity="0.82"
+                  className="map-edge"
+                />
+              </g>
             );
           })}
         </g>
@@ -339,6 +408,12 @@ export default function GraphMap({
               selectedElement?.kind === "node" &&
               selectedElement?.data?.id === node.id;
 
+            const isHovered = hoveredNodeId === node.id;
+
+            const labelVisible = shouldShowLabel(node, isSelected, isHovered);
+            const labelText =
+              isSelected || isHovered ? node.name : shortenLabel(node.name);
+
             return (
               <g
                 key={`node-${node.id}`}
@@ -352,17 +427,28 @@ export default function GraphMap({
                         : "facility",
                   })
                 }
+                onMouseEnter={() => setHoveredNodeId(node.id)}
+                onMouseLeave={() => setHoveredNodeId(null)}
                 className="map-node"
               >
                 <circle
-                  r={isSelected ? radius + 3 : radius}
+                  r={isSelected ? radius + 4 : isHovered ? radius + 2 : radius}
                   fill={fill}
                   stroke={isSelected ? "#0f172a" : "#ffffff"}
                   strokeWidth={isSelected ? 3 : 2}
                 />
-                <text x="12" y="4" className="map-node-label">
-                  {node.name}
-                </text>
+
+                {labelVisible && (
+                  <text
+                    x="12"
+                    y="4"
+                    className={`map-node-label ${
+                      isSelected ? "selected" : isHovered ? "hovered" : ""
+                    }`}
+                  >
+                    {labelText}
+                  </text>
+                )}
               </g>
             );
           })}
