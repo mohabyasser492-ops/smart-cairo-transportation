@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { networkApi } from "../api/client";
+import {
+  pageTransition,
+  resultReveal,
+  staggerContainer,
+  cardItem,
+  buttonMotion,
+} from "../ui/motion";
 
 function formatCurrency(value) {
   const numeric = Number(value);
@@ -28,7 +36,11 @@ function SummaryGrid({ items = [] }) {
 
 function EdgeList({ title, edges = [], mode = "expansion" }) {
   return (
-    <div className="details-card optimizer-subcard">
+    <motion.div
+      className="details-card optimizer-subcard"
+      {...resultReveal}
+      key={`${title}-${edges.length}-${mode}`}
+    >
       <h4>{title}</h4>
 
       {!edges.length ? (
@@ -39,7 +51,12 @@ function EdgeList({ title, edges = [], mode = "expansion" }) {
             const key = `${edge.road_id || edge.id || edge.source}-${edge.destination}-${index}`;
 
             return (
-              <div key={key} className="optimizer-road-item">
+              <motion.div
+                key={key}
+                className="optimizer-road-item"
+                whileHover={{ y: -3 }}
+                transition={{ duration: 0.18 }}
+              >
                 <div>
                   <strong>
                     {edge.source} → {edge.destination}
@@ -67,12 +84,12 @@ function EdgeList({ title, edges = [], mode = "expansion" }) {
                     </span>
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -112,7 +129,7 @@ export default function InfrastructureOptimizer() {
         setMstData(mst);
         setPlanData(plan);
       } catch (err) {
-        setError(err.message || "Could not load infrastructure optimization data.");
+        setError(err.message || "Could not load infrastructure planning data.");
       } finally {
         setLoadingInitial(false);
       }
@@ -206,7 +223,7 @@ export default function InfrastructureOptimizer() {
         value: mstData.total_cost != null ? `${mstData.total_cost}` : "N/A",
       },
       {
-        label: "Algorithm",
+        label: "Method",
         value: mstData.algorithm ?? "N/A",
       },
     ];
@@ -246,62 +263,80 @@ export default function InfrastructureOptimizer() {
   }, [maintenanceResult]);
 
   return (
-    <section>
-      <div className="page-header">
+    <motion.section {...pageTransition}>
+      <motion.div className="page-header" {...resultReveal}>
         <p className="eyebrow">Network Planning</p>
         <h1>Infrastructure Optimizer</h1>
         <p>
-          Analyze the minimum spanning tree, inspect the infrastructure plan,
-          optimize road expansion, and generate maintenance plans using the
-          network optimization backend.
+          Evaluate connectivity, optimize road expansion, and generate
+          maintenance plans for the transport network.
         </p>
-      </div>
+      </motion.div>
 
       {error && <div className="error-box">{error}</div>}
 
       {loadingInitial ? (
         <div className="empty-state">
-          Loading infrastructure optimization data...
+          Loading infrastructure planning data...
         </div>
       ) : (
         <>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <span>MST Connected</span>
+          <motion.div
+            className="stats-grid"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+          >
+            <motion.div className="stat-card" variants={cardItem}>
+              <span>Network Connected</span>
               <strong>{mstData?.connected ? "Yes" : "No"}</strong>
               <p>Shows whether the neighborhood network is fully connected</p>
-            </div>
+            </motion.div>
 
-            <div className="stat-card">
-              <span>MST Edges</span>
+            <motion.div className="stat-card" variants={cardItem}>
+              <span>Selected Edges</span>
               <strong>{mstData?.selected_edges_count ?? "N/A"}</strong>
-              <p>Roads selected by the minimum spanning tree</p>
-            </div>
+              <p>Roads selected by the connectivity plan</p>
+            </motion.div>
 
-            <div className="stat-card">
+            <motion.div className="stat-card" variants={cardItem}>
               <span>Total Distance</span>
               <strong>
                 {mstData?.total_distance_km != null
                   ? `${mstData.total_distance_km}`
                   : "N/A"}
               </strong>
-              <p>Minimum total road distance for full connectivity</p>
-            </div>
+              <p>Minimum total road distance for full network connectivity</p>
+            </motion.div>
 
-            <div className="stat-card">
-              <span>Algorithm</span>
+            <motion.div className="stat-card" variants={cardItem}>
+              <span>Method</span>
               <strong>{mstData?.algorithm ?? "N/A"}</strong>
-              <p>Current infrastructure core plan uses Kruskal MST</p>
-            </div>
-          </div>
+              <p>Current infrastructure planning method used by the backend</p>
+            </motion.div>
+          </motion.div>
 
-          <div className="comparison-grid" style={{ marginBottom: "24px" }}>
-            <div className="result-card">
-              <h3>Minimum Spanning Tree</h3>
+          <motion.div
+            className="comparison-grid"
+            style={{ marginBottom: "24px" }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <motion.div
+              className="result-card"
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.18 }}
+            >
+              <h3>Connectivity Summary</h3>
               <SummaryGrid items={mstSummaryItems} />
-            </div>
+            </motion.div>
 
-            <div className="result-card">
+            <motion.div
+              className="result-card"
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.18 }}
+            >
               <h3>Infrastructure Plan</h3>
 
               {!planData ? (
@@ -315,7 +350,7 @@ export default function InfrastructureOptimizer() {
                     </div>
 
                     <div>
-                      <span>Algorithm Used</span>
+                      <span>Method</span>
                       <strong>{planData.algorithm_used ?? "N/A"}</strong>
                     </div>
 
@@ -325,7 +360,10 @@ export default function InfrastructureOptimizer() {
                     </div>
                   </div>
 
-                  <div className="details-card optimizer-subcard">
+                  <motion.div
+                    className="details-card optimizer-subcard"
+                    {...resultReveal}
+                  >
                     <h4>Planning Notes</h4>
 
                     {planData.planning_notes?.length ? (
@@ -337,27 +375,30 @@ export default function InfrastructureOptimizer() {
                     ) : (
                       <div className="empty-state">No planning notes available.</div>
                     )}
-                  </div>
+                  </motion.div>
                 </>
               )}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <div className="prediction-section">
             <div className="prediction-section-header">
-              <h2>Expansion Optimizer</h2>
+              <h2>Expansion Planning</h2>
               <p>
-                Simulate road expansion with or without potential roads, choose
-                a priority, and optimize the selected infrastructure network.
+                Simulate road expansion scenarios, compare priorities, and
+                evaluate the resulting network plan.
               </p>
             </div>
 
             <div className="prediction-layout">
-              <form
+              <motion.form
                 className="form-card prediction-form-card"
                 onSubmit={handleRunExpansion}
+                initial={{ opacity: 0, x: -14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.32, ease: "easeOut" }}
               >
-                <h3>Expansion Inputs</h3>
+                <h3>Planning Inputs</h3>
 
                 <label className="toggle-item">
                   <input
@@ -392,28 +433,37 @@ export default function InfrastructureOptimizer() {
                 </label>
 
                 <div className="button-row">
-                  <button type="submit" disabled={loadingExpansion}>
-                    {loadingExpansion
-                      ? "Optimizing..."
-                      : "Run Expansion Optimization"}
-                  </button>
+                  <motion.button
+                    {...buttonMotion}
+                    type="submit"
+                    disabled={loadingExpansion}
+                  >
+                    {loadingExpansion ? "Optimizing..." : "Run Expansion Plan"}
+                  </motion.button>
                 </div>
-              </form>
+              </motion.form>
 
-              <div className="result-card prediction-result-card">
-                <h3>Expansion Result</h3>
+              <motion.div
+                className="result-card prediction-result-card"
+                {...resultReveal}
+                key={expansionResult ? "expansion-loaded" : "expansion-empty"}
+              >
+                <h3>Planning Result</h3>
 
                 {!expansionResult ? (
                   <div className="empty-state prediction-empty-state">
-                    Run the expansion optimizer to see selected roads, total
-                    distance, total cost, and connectivity.
+                    Run an expansion plan to review selected roads, total
+                    distance, total cost, and network connectivity.
                   </div>
                 ) : (
                   <>
                     <SummaryGrid items={expansionSummaryItems} />
 
-                    <div className="details-card optimizer-subcard">
-                      <h4>Configuration Used</h4>
+                    <motion.div
+                      className="details-card optimizer-subcard"
+                      {...resultReveal}
+                    >
+                      <h4>Planning Configuration</h4>
                       <div className="result-grid">
                         <div>
                           <span>Use Potential Roads</span>
@@ -435,13 +485,13 @@ export default function InfrastructureOptimizer() {
                         </div>
 
                         <div>
-                          <span>Optimization Type</span>
+                          <span>Planning Type</span>
                           <strong>
                             {expansionResult.optimization_type ?? "N/A"}
                           </strong>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
 
                     <EdgeList
                       title="Selected Roads"
@@ -450,26 +500,28 @@ export default function InfrastructureOptimizer() {
                     />
                   </>
                 )}
-              </div>
+              </motion.div>
             </div>
           </div>
 
           <div className="prediction-section">
             <div className="prediction-section-header">
-              <h2>Maintenance Plan</h2>
+              <h2>Maintenance Planning</h2>
               <p>
                 Generate a maintenance plan based on the available budget and
-                inspect the selected projects returned by the dynamic programming
-                optimizer.
+                review the selected projects.
               </p>
             </div>
 
             <div className="prediction-layout">
-              <form
+              <motion.form
                 className="form-card prediction-form-card"
                 onSubmit={handleRunMaintenance}
+                initial={{ opacity: 0, x: -14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.32, ease: "easeOut" }}
               >
-                <h3>Maintenance Inputs</h3>
+                <h3>Maintenance Parameters</h3>
 
                 <label>
                   Budget
@@ -482,27 +534,35 @@ export default function InfrastructureOptimizer() {
                 </label>
 
                 <div className="button-row">
-                  <button type="submit" disabled={loadingMaintenance}>
+                  <motion.button
+                    {...buttonMotion}
+                    type="submit"
+                    disabled={loadingMaintenance}
+                  >
                     {loadingMaintenance
                       ? "Generating..."
                       : "Generate Maintenance Plan"}
-                  </button>
+                  </motion.button>
                 </div>
-              </form>
+              </motion.form>
 
-              <div className="result-card prediction-result-card">
+              <motion.div
+                className="result-card prediction-result-card"
+                {...resultReveal}
+                key={maintenanceResult ? "maintenance-loaded" : "maintenance-empty"}
+              >
                 <h3>Maintenance Result</h3>
 
                 {!maintenanceResult ? (
                   <div className="empty-state prediction-empty-state">
-                    Run the maintenance planner to see optimized maintenance
-                    projects, total cost, remaining budget, and benefit score.
+                    Run maintenance planning to review selected projects, total
+                    cost, remaining budget, and benefit score.
                   </div>
                 ) : (
                   <>
                     <div className="result-grid optimizer-summary-grid">
                       <div className="full-span">
-                        <span>Algorithm</span>
+                        <span>Method</span>
                         <strong>{maintenanceResult.algorithm ?? "N/A"}</strong>
                       </div>
 
@@ -555,11 +615,11 @@ export default function InfrastructureOptimizer() {
                     />
                   </>
                 )}
-              </div>
+              </motion.div>
             </div>
           </div>
         </>
       )}
-    </section>
+    </motion.section>
   );
 }
