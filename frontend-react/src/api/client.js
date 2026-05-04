@@ -98,6 +98,10 @@ export const dataApi = {
     return apiGet("/api/data/bus-routes");
   },
 
+  getPublicTransportDemand() {
+    return apiGet("/api/data/public-transport-demand");
+  },
+
   getSummary() {
     return apiGet("/api/data/summary");
   },
@@ -146,5 +150,11 @@ export const trafficApi = {
 
   getIntersectionsStatus() {
     return apiGet("/api/traffic/intersections/status");
+  },
+};
+
+export const transitApi = {
+  allocateBuses(payload) {
+    return apiPost("/api/transit/allocate-buses", payload);
   },
 };
