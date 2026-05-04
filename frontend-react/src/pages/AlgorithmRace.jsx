@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { routingApi } from "../api/client";
 import AlgorithmComparison from "../components/AlgorithmComparison";
+import { pageTransition, resultReveal, buttonMotion } from "../ui/motion";
 
 const locations = [
   { value: "Maadi", label: "Maadi" },
@@ -41,7 +43,7 @@ export default function AlgorithmRace() {
 
     setForm((previous) => ({
       ...previous,
-      [name]: value,
+      value,
     }));
   }
 
@@ -66,7 +68,7 @@ export default function AlgorithmRace() {
       setRaceStep(0);
       setIsPlaying(true);
     } catch (err) {
-      setError(err.message || "Could not run algorithm comparison.");
+      setError(err.message || "Could not run routing comparison.");
     } finally {
       setLoading(false);
     }
@@ -88,6 +90,7 @@ export default function AlgorithmRace() {
           clearInterval(interval);
           return previous;
         }
+
         return previous + 1;
       });
     }, 700);
@@ -106,7 +109,9 @@ export default function AlgorithmRace() {
   const astarVisibleOrder = astarOrder.slice(0, raceStep + 1);
 
   const dijkstraProgress = comparison
-    ? Math.round((dijkstraVisibleOrder.length / Math.max(dijkstraOrder.length, 1)) * 100)
+    ? Math.round(
+        (dijkstraVisibleOrder.length / Math.max(dijkstraOrder.length, 1)) * 100
+      )
     : 0;
 
   const astarProgress = comparison
@@ -114,7 +119,8 @@ export default function AlgorithmRace() {
     : 0;
 
   const winner = comparison?.summary?.winner ?? "N/A";
-  const winnerReason = comparison?.summary?.winner_reason ?? "No summary available.";
+  const winnerReason =
+    comparison?.summary?.winner_reason ?? "No summary available.";
 
   function handlePlayPause() {
     if (!comparison) return;
@@ -128,19 +134,56 @@ export default function AlgorithmRace() {
   }
 
   return (
-    <section>
-      <div className="page-header">
-        <p className="eyebrow">Bonus Visualization</p>
-        <h1>Dijkstra vs A* Algorithm Race</h1>
+    <motion.section {...pageTransition}>
+      <motion.div className="page-header" {...resultReveal}>
+        <p className="eyebrow">Performance Analysis</p>
+        <h1>Routing Performance</h1>
         <p>
-          Run both algorithms on the same route, animate their exploration order,
-          compare total cost, runtime, and visited nodes, then identify the winner.
+          Compare routing behavior, exploration order, and efficiency across
+          supported pathfinding methods.
         </p>
-      </div>
+      </motion.div>
+
+      <motion.div
+        className="stats-grid"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: "easeOut", delay: 0.05 }}
+      >
+        <div className="stat-card">
+          <span>Comparison Scope</span>
+          <strong>2</strong>
+          <p>Dijkstra and A* are evaluated side by side on the same route</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Supported Locations</span>
+          <strong>{locations.length}</strong>
+          <p>Routing points available across the Cairo network</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Animation</span>
+          <strong>Live</strong>
+          <p>Step-by-step exploration order playback for both methods</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Evaluation Mode</span>
+          <strong>{weights[0].label}</strong>
+          <p>Current comparison runs on distance-based routing weight</p>
+        </div>
+      </motion.div>
 
       <div className="planner-layout">
-        <form className="form-card" onSubmit={handleSubmit}>
-          <h3>Race Inputs</h3>
+        <motion.form
+          className="form-card"
+          onSubmit={handleSubmit}
+          initial={{ opacity: 0, x: -14 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
+        >
+          <h3>Comparison Inputs</h3>
 
           <label>
             Source
@@ -180,46 +223,56 @@ export default function AlgorithmRace() {
           </label>
 
           <div className="button-row">
-            <button type="submit" disabled={loading}>
-              {loading ? "Running Race..." : "Run Algorithm Race"}
-            </button>
+            <motion.button
+              {...buttonMotion}
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Running..." : "Run Performance Comparison"}
+            </motion.button>
           </div>
 
           {error && <div className="error-box">{error}</div>}
-        </form>
+        </motion.form>
 
-        <div className="result-card">
-          <h3>Race Summary</h3>
+        <motion.div
+          className="result-card"
+          {...resultReveal}
+          key={comparison ? "performance-loaded" : "performance-empty"}
+        >
+          <h3>Performance Summary</h3>
 
           {!comparison ? (
             <div className="empty-state">
-              Run the algorithm race to see the winner and summary here.
+              Run a routing comparison to review the summary and leading method.
             </div>
           ) : (
             <div className="race-summary-card">
               <div className="winner-row">
-                <span className="winner-label">Winner</span>
+                <span className="winner-label">Leading Method</span>
                 <span className="winner-badge">{winner}</span>
               </div>
 
               <p className="winner-reason">{winnerReason}</p>
 
               <div className="race-controls">
-                <button
+                <motion.button
+                  {...buttonMotion}
                   type="button"
                   className="secondary-button"
                   onClick={handlePlayPause}
                 >
-                  {isPlaying ? "Pause Race" : "Play Race"}
-                </button>
+                  {isPlaying ? "Pause Animation" : "Play Animation"}
+                </motion.button>
 
-                <button
+                <motion.button
+                  {...buttonMotion}
                   type="button"
                   className="secondary-button"
                   onClick={handleRestartRace}
                 >
-                  Restart Race
-                </button>
+                  Restart Animation
+                </motion.button>
               </div>
 
               <div className="result-grid">
@@ -240,21 +293,28 @@ export default function AlgorithmRace() {
 
                 <div>
                   <span>Current Step</span>
-                  <strong>
-                    {comparison ? `${raceStep + 1} / ${maxSteps}` : "N/A"}
-                  </strong>
+                  <strong>{comparison ? `${raceStep + 1} / ${maxSteps}` : "N/A"}</strong>
                 </div>
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {comparison && (
-        <div className="comparison-section">
+        <motion.div
+          className="comparison-section"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+        >
           <div className="comparison-grid">
-            <div className="result-card">
-              <h3>Dijkstra Race Track</h3>
+            <motion.div
+              className="result-card"
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.18 }}
+            >
+              <h3>Dijkstra Exploration</h3>
 
               <div className="race-progress-row">
                 <span>Progress</span>
@@ -262,9 +322,10 @@ export default function AlgorithmRace() {
               </div>
 
               <div className="progress-bar">
-                <div
+                <motion.div
                   className="progress-bar-fill"
-                  style={{ width: `${dijkstraProgress}%` }}
+                  animate={{ width: `${dijkstraProgress}%` }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
                 />
               </div>
 
@@ -278,10 +339,14 @@ export default function AlgorithmRace() {
                   ? dijkstraVisibleOrder.join(" → ")
                   : "Not started"}
               </p>
-            </div>
+            </motion.div>
 
-            <div className="result-card">
-              <h3>A* Race Track</h3>
+            <motion.div
+              className="result-card"
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.18 }}
+            >
+              <h3>A* Exploration</h3>
 
               <div className="race-progress-row">
                 <span>Progress</span>
@@ -289,9 +354,10 @@ export default function AlgorithmRace() {
               </div>
 
               <div className="progress-bar">
-                <div
+                <motion.div
                   className="progress-bar-fill alt"
-                  style={{ width: `${astarProgress}%` }}
+                  animate={{ width: `${astarProgress}%` }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
                 />
               </div>
 
@@ -305,12 +371,14 @@ export default function AlgorithmRace() {
                   ? astarVisibleOrder.join(" → ")
                   : "Not started"}
               </p>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <AlgorithmComparison comparison={comparison} />
-    </section>
+      <motion.div {...resultReveal}>
+        <AlgorithmComparison comparison={comparison} />
+      </motion.div>
+    </motion.section>
   );
 }
