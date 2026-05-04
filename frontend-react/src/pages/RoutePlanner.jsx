@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { routingApi } from "../api/client";
 import RouteResult from "../components/RouteResult";
 import AlgorithmComparison from "../components/AlgorithmComparison";
+import { pageTransition, resultReveal, buttonMotion } from "../ui/motion";
 
 const locations = [
   { value: "Maadi", label: "Maadi" },
@@ -91,7 +93,7 @@ export default function RoutePlanner() {
       const data = await routingApi.bestRouteByTime(payload);
       setRouteResult(data);
     } catch (err) {
-      setError(err.message || "Could not load best route by time.");
+      setError(err.message || "Could not load best route.");
     } finally {
       setLoadingRoute(false);
     }
@@ -112,34 +114,67 @@ export default function RoutePlanner() {
       const data = await routingApi.compareDijkstraVsAstar(payload);
       setComparison(data);
     } catch (err) {
-      setError(err.message || "Could not load algorithm comparison.");
+      setError(err.message || "Could not load routing comparison.");
     } finally {
       setLoadingComparison(false);
     }
   }
 
   return (
-    <section>
-      <div className="page-header">
-        <p className="eyebrow">Shortest Path + Traffic-Aware Routing</p>
+    <motion.section {...pageTransition}>
+      <motion.div className="page-header" {...resultReveal}>
+        <p className="eyebrow">Routing</p>
         <h1>Route Planner</h1>
         <p>
-          Select a source, destination, and departure time to run a
-          traffic-aware route search. You can also compare Dijkstra and A*.
+          Find efficient routes across Cairo using traffic-aware path selection
+          and time-based routing inputs.
         </p>
-      </div>
+      </motion.div>
+
+      <motion.div
+        className="stats-grid"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: "easeOut", delay: 0.05 }}
+      >
+        <div className="stat-card">
+          <span>Locations</span>
+          <strong>{locations.length}</strong>
+          <p>Available origins and destinations across the Cairo network</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Departure Windows</span>
+          <strong>{departureTimes.length}</strong>
+          <p>Peak and off-peak routing scenarios supported</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Route Modes</span>
+          <strong>2</strong>
+          <p>Standard route search and best-route-by-time planning</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Comparison</span>
+          <strong>Live</strong>
+          <p>Review search efficiency between supported routing methods</p>
+        </div>
+      </motion.div>
 
       <div className="planner-layout">
-        <form className="form-card" onSubmit={handleTimeDependentRoute}>
-          <h3>Route Inputs</h3>
+        <motion.form
+          className="form-card"
+          onSubmit={handleTimeDependentRoute}
+          initial={{ opacity: 0, x: -14 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
+        >
+          <h3>Routing Inputs</h3>
 
           <label>
             Source
-            <select
-              name="source"
-              value={form.source}
-              onChange={handleChange}
-            >
+            <select name="source" value={form.source} onChange={handleChange}>
               {locations.map((location) => (
                 <option key={location.value} value={location.value}>
                   {location.label}
@@ -180,47 +215,59 @@ export default function RoutePlanner() {
 
           <label>
             Day Type
-            <select
-              name="day_type"
-              value={form.day_type}
-              onChange={handleChange}
-            >
+            <select name="day_type" value={form.day_type} onChange={handleChange}>
               <option value="weekday">Weekday</option>
               <option value="weekend">Weekend</option>
             </select>
           </label>
 
           <div className="button-row">
-            <button type="submit" disabled={loadingRoute}>
-              {loadingRoute ? "Searching..." : "Run Time-Dependent Route"}
-            </button>
+            <motion.button
+              {...buttonMotion}
+              type="submit"
+              disabled={loadingRoute}
+            >
+              {loadingRoute ? "Searching..." : "Find Route"}
+            </motion.button>
 
-            <button
+            <motion.button
+              {...buttonMotion}
               type="button"
               className="secondary-button"
               onClick={handleBestRouteByTime}
               disabled={loadingRoute}
             >
-              {loadingRoute ? "Searching..." : "Best Route By Time"}
-            </button>
+              {loadingRoute ? "Searching..." : "Find Best Route"}
+            </motion.button>
 
-            <button
+            <motion.button
+              {...buttonMotion}
               type="button"
               className="secondary-button"
               onClick={handleCompareAlgorithms}
               disabled={loadingComparison}
             >
-              {loadingComparison ? "Comparing..." : "Compare Dijkstra vs A*"}
-            </button>
+              {loadingComparison ? "Comparing..." : "Compare Routing Methods"}
+            </motion.button>
           </div>
 
           {error && <div className="error-box">{error}</div>}
-        </form>
+        </motion.form>
 
-        <RouteResult result={routeResult} />
+        <motion.div
+          {...resultReveal}
+          key={routeResult ? "route-loaded" : "route-empty"}
+        >
+          <RouteResult result={routeResult} />
+        </motion.div>
       </div>
 
-      <AlgorithmComparison comparison={comparison} />
-    </section>
+      <motion.div
+        {...resultReveal}
+        key={comparison ? "comparison-loaded" : "comparison-empty"}
+      >
+        <AlgorithmComparison comparison={comparison} />
+      </motion.div>
+    </motion.section>
   );
 }

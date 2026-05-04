@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { routingApi } from "../api/client";
+import { pageTransition, resultReveal, buttonMotion } from "../ui/motion";
 
 const locations = [
   { value: "Maadi", label: "Maadi" },
@@ -76,11 +78,8 @@ export default function EmergencyRouting() {
     result?.explored_nodes ??
     "N/A";
 
-  const chosenAlgorithm =
-    result?.chosen_algorithm ?? result?.algorithm ?? "N/A";
-
+  const selectedMethod = result?.chosen_algorithm ?? result?.algorithm ?? "N/A";
   const selectionReason = result?.selection_reason ?? "N/A";
-
   const weightUsed = result?.weight_used ?? "distance";
 
   const displayedDistance =
@@ -109,27 +108,60 @@ export default function EmergencyRouting() {
   const astarResult = result?.comparison?.astar ?? null;
 
   return (
-    <section>
-      <div className="page-header">
-        <p className="eyebrow">Emergency Response</p>
+    <motion.section {...pageTransition}>
+      <motion.div className="page-header" {...resultReveal}>
+        <p className="eyebrow">Emergency Operations</p>
         <h1>Emergency Routing</h1>
         <p>
-          Find the best emergency route using Dijkstra and A* comparison, then
-          select the most efficient route for emergency response.
+          Generate priority routes for emergency response and evaluate the most
+          effective path across the network.
         </p>
-      </div>
+      </motion.div>
+
+      <motion.div
+        className="stats-grid"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: "easeOut", delay: 0.05 }}
+      >
+        <div className="stat-card">
+          <span>Coverage</span>
+          <strong>{locations.length}</strong>
+          <p>Available emergency routing locations in the Cairo network</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Response Types</span>
+          <strong>{emergencyTypes.length}</strong>
+          <p>Ambulance, fire response, and police routing supported</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Routing Strategy</span>
+          <strong>Adaptive</strong>
+          <p>Evaluates the most effective response path based on backend output</p>
+        </div>
+
+        <div className="stat-card">
+          <span>Method Comparison</span>
+          <strong>Included</strong>
+          <p>Compare search efficiency between supported routing methods</p>
+        </div>
+      </motion.div>
 
       <div className="planner-layout">
-        <form className="form-card" onSubmit={handleSubmit}>
-          <h3>Emergency Route Inputs</h3>
+        <motion.form
+          className="form-card"
+          onSubmit={handleSubmit}
+          initial={{ opacity: 0, x: -14 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
+        >
+          <h3>Response Inputs</h3>
 
           <label>
             Source
-            <select
-              name="source"
-              value={form.source}
-              onChange={handleChange}
-            >
+            <select name="source" value={form.source} onChange={handleChange}>
               {locations.map((location) => (
                 <option key={location.value} value={location.value}>
                   {location.label}
@@ -169,20 +201,29 @@ export default function EmergencyRouting() {
           </label>
 
           <div className="button-row">
-            <button type="submit" disabled={loading}>
-              {loading ? "Searching..." : "Run Emergency Route"}
-            </button>
+            <motion.button
+              {...buttonMotion}
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Generating..." : "Generate Emergency Route"}
+            </motion.button>
           </div>
 
           {error && <div className="error-box">{error}</div>}
-        </form>
+        </motion.form>
 
-        <div className="result-card">
-          <h3>Emergency Route Result</h3>
+        <motion.div
+          className="result-card"
+          {...resultReveal}
+          key={result ? "response-loaded" : "response-empty"}
+        >
+          <h3>Response Route Result</h3>
 
           {!result ? (
             <div className="empty-state">
-              Run an emergency route search to see the result here.
+              Generate an emergency route to review the recommended path and
+              response details.
             </div>
           ) : (
             <>
@@ -213,8 +254,8 @@ export default function EmergencyRouting() {
                 </div>
 
                 <div>
-                  <span>Chosen Algorithm</span>
-                  <strong>{chosenAlgorithm}</strong>
+                  <span>Selected Method</span>
+                  <strong>{selectedMethod}</strong>
                 </div>
 
                 <div>
@@ -230,8 +271,7 @@ export default function EmergencyRouting() {
                 <div>
                   <span>Distance</span>
                   <strong>
-                    {displayedDistance !== null &&
-                    displayedDistance !== undefined
+                    {displayedDistance !== null && displayedDistance !== undefined
                       ? `${displayedDistance} km`
                       : "N/A"}
                   </strong>
@@ -258,11 +298,21 @@ export default function EmergencyRouting() {
               </div>
 
               {dijkstraResult && astarResult && (
-                <div className="comparison-section" style={{ marginTop: "24px" }}>
-                  <h3>Algorithm Comparison</h3>
+                <motion.div
+                  className="comparison-section"
+                  style={{ marginTop: "24px" }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.28, ease: "easeOut", delay: 0.06 }}
+                >
+                  <h3>Method Comparison</h3>
 
                   <div className="comparison-grid">
-                    <div className="result-card">
+                    <motion.div
+                      className="result-card"
+                      whileHover={{ y: -3 }}
+                      transition={{ duration: 0.18 }}
+                    >
                       <h4>Dijkstra</h4>
                       <p>
                         <strong>Path:</strong>{" "}
@@ -276,9 +326,13 @@ export default function EmergencyRouting() {
                         <strong>Total Cost:</strong>{" "}
                         {dijkstraResult.total_cost ?? "N/A"}
                       </p>
-                    </div>
+                    </motion.div>
 
-                    <div className="result-card">
+                    <motion.div
+                      className="result-card"
+                      whileHover={{ y: -3 }}
+                      transition={{ duration: 0.18 }}
+                    >
                       <h4>A*</h4>
                       <p>
                         <strong>Path:</strong>{" "}
@@ -292,14 +346,14 @@ export default function EmergencyRouting() {
                         <strong>Total Cost:</strong>{" "}
                         {astarResult.total_cost ?? "N/A"}
                       </p>
-                    </div>
+                    </motion.div>
                   </div>
-                </div>
+                </motion.div>
               )}
             </>
           )}
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }
