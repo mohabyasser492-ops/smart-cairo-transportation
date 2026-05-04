@@ -64,4 +64,9 @@ export const routingApi = {
   compareDijkstraVsAstar(payload) {
     return apiPost("/api/routing/compare/dijkstra-vs-astar", payload);
   },
+
+  emergencyRoute(payload) {
+    return apiPost("/api/routing/emergency", payload);
+  },
+  
 };
