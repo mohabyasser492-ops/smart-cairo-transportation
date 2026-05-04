@@ -1,4 +1,8 @@
+from math import ceil
 from typing import Any, Dict, List
+
+
+SCALING_UNIT = 1_000_000  # 1 DP unit = 1,000,000 EGP
 
 
 def optimize_maintenance_plan(
@@ -11,7 +15,7 @@ def optimize_maintenance_plan(
     if not road_projects:
         raise ValueError("No road projects provided for maintenance optimization")
 
-    scaled_budget = int(budget)
+    scaled_budget = _scale_amount(budget)
     projects = []
 
     for project in road_projects:
@@ -35,6 +39,7 @@ def optimize_maintenance_plan(
                 "source": project.get("source"),
                 "destination": project.get("destination"),
                 "maintenance_cost": maintenance_cost,
+                "scaled_cost": _scale_amount(maintenance_cost),
                 "benefit_score": benefit_score,
                 "condition": project.get("condition"),
             }
@@ -46,11 +51,12 @@ def optimize_maintenance_plan(
 
     for i in range(1, n + 1):
         project = projects[i - 1]
+        project_cost = project["scaled_cost"]
 
         for current_budget in range(scaled_budget + 1):
-            if project["maintenance_cost"] <= current_budget:
+            if project_cost <= current_budget:
                 include_project = (
-                    dp[i - 1][current_budget - project["maintenance_cost"]]
+                    dp[i - 1][current_budget - project_cost]
                     + project["benefit_score"]
                 )
                 exclude_project = dp[i - 1][current_budget]
@@ -60,13 +66,22 @@ def optimize_maintenance_plan(
                 dp[i][current_budget] = dp[i - 1][current_budget]
 
     selected_projects = []
-    remaining_budget = scaled_budget
+    remaining_budget_units = scaled_budget
 
     for i in range(n, 0, -1):
-        if dp[i][remaining_budget] != dp[i - 1][remaining_budget]:
+        if dp[i][remaining_budget_units] != dp[i - 1][remaining_budget_units]:
             project = projects[i - 1]
-            selected_projects.append(project)
-            remaining_budget -= project["maintenance_cost"]
+            selected_projects.append(
+                {
+                    "road_id": project["road_id"],
+                    "source": project["source"],
+                    "destination": project["destination"],
+                    "maintenance_cost": project["maintenance_cost"],
+                    "benefit_score": project["benefit_score"],
+                    "condition": project["condition"],
+                }
+            )
+            remaining_budget_units -= project["scaled_cost"]
 
     selected_projects.reverse()
 
@@ -81,4 +96,14 @@ def optimize_maintenance_plan(
         "total_cost": total_cost,
         "remaining_budget": budget - total_cost,
         "total_benefit_score": total_benefit,
+        "scaling_unit": SCALING_UNIT,
     }
+
+
+def _scale_amount(amount: float) -> int:
+    """
+    Convert large money values into smaller DP units to keep
+    the knapsack table computationally feasible.
+    """
+    scaled = ceil(float(amount) / SCALING_UNIT)
+    return max(1, scaled)

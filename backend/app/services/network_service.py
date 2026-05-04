@@ -1,8 +1,8 @@
 from typing import Any, Dict, List
 
+from app.algorithms.dp_maintenance import optimize_maintenance_plan
 from app.algorithms.kruskal_mst import kruskal_minimum_spanning_tree
 from app.services.data_service import data_service
-from app.algorithms.dp_maintenance import optimize_maintenance_plan
 
 
 class NetworkService:
@@ -14,7 +14,8 @@ class NetworkService:
         filtered_edges = [
             edge
             for edge in edges
-            if edge["source"] in neighborhood_names and edge["destination"] in neighborhood_names
+            if edge["source"] in neighborhood_names
+            and edge["destination"] in neighborhood_names
         ]
 
         return kruskal_minimum_spanning_tree(
@@ -54,9 +55,11 @@ class NetworkService:
         filtered_edges = [
             edge
             for edge in edges
-            if edge["source"] in neighborhood_names and edge["destination"] in neighborhood_names
+            if edge["source"] in neighborhood_names
+            and edge["destination"] in neighborhood_names
         ]
 
+        # Priority controls how Kruskal ranks edges
         weight_key = "construction_cost"
         if priority == "distance":
             weight_key = "distance_km"
@@ -67,6 +70,20 @@ class NetworkService:
             weight_key=weight_key,
         )
 
+        selected_edges = mst_result.get("selected_edges", [])
+
+        # Always compute the real totals from selected edges,
+        # regardless of optimization priority
+        actual_total_distance = round(
+            sum(float(edge.get("distance_km", 0)) for edge in selected_edges),
+            2,
+        )
+
+        actual_total_cost = round(
+            sum(float(edge.get("construction_cost", 0)) for edge in selected_edges),
+            2,
+        )
+
         return {
             "optimization_type": "road_network_expansion",
             "use_potential_roads": use_potential_roads,
@@ -75,8 +92,8 @@ class NetworkService:
             "result": mst_result,
             "summary": {
                 "selected_roads": mst_result["selected_edges_count"],
-                "total_distance_km": mst_result["total_distance_km"],
-                "estimated_total_cost": mst_result["total_cost"],
+                "total_distance_km": actual_total_distance,
+                "estimated_total_cost": actual_total_cost,
                 "network_connected": mst_result["connected"],
             },
         }
@@ -91,7 +108,8 @@ class NetworkService:
         return [
             neighborhood["name"]
             for neighborhood in neighborhoods
-            if neighborhood.get("id") is not None and neighborhood.get("name") is not None
+            if neighborhood.get("id") is not None
+            and neighborhood.get("name") is not None
         ]
 
     def _get_existing_road_edges(self, cost_per_km: float) -> List[Dict[str, Any]]:
@@ -145,11 +163,16 @@ class NetworkService:
                 or 1
             )
 
-            construction_cost = float(
-                road.get("construction_cost")
-                or road.get("cost")
-                or distance_km * cost_per_km
-            )
+            # Use explicit per-road construction cost if available.
+            # Potential roads in your JSON use "construction_cost_million_egp".
+            if road.get("construction_cost_million_egp") is not None:
+                construction_cost = float(road.get("construction_cost_million_egp")) * 1_000_000
+            elif road.get("construction_cost") is not None:
+                construction_cost = float(road.get("construction_cost"))
+            elif road.get("cost") is not None:
+                construction_cost = float(road.get("cost"))
+            else:
+                construction_cost = float(distance_km * cost_per_km)
 
             edges.append(
                 {
@@ -158,7 +181,8 @@ class NetworkService:
                     "destination": destination,
                     "distance_km": distance_km,
                     "construction_cost": construction_cost,
-                    "capacity_vehicles_per_hour": road.get("capacity_vehicles_per_hour"),
+                    "capacity_vehicles_per_hour": road.get("capacity_vehicles_per_hour")
+                    or road.get("estimated_capacity_vehicles_per_hour"),
                     "condition": road.get("condition"),
                     "road_type": road_type,
                 }
@@ -179,7 +203,7 @@ class NetworkService:
             possible_keys=["facilities", "data", "items", "records"],
         )
 
-        lookup = {}
+        lookup: Dict[str, str] = {}
 
         for neighborhood in neighborhoods:
             node_id = neighborhood.get("id")
@@ -198,7 +222,7 @@ class NetworkService:
         return lookup
 
     @staticmethod
-    def _extract_list(data, possible_keys):
+    def _extract_list(data: Any, possible_keys: List[str]) -> List[Dict[str, Any]]:
         if isinstance(data, list):
             return data
 
@@ -254,7 +278,7 @@ class NetworkService:
         return int(distance_km * base_cost_per_km * condition_penalty)
 
     @staticmethod
-    def _estimate_maintenance_benefit(capacity, condition: int) -> int:
+    def _estimate_maintenance_benefit(capacity: Any, condition: int) -> int:
         if capacity is None:
             capacity = 1000
 

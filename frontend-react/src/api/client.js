@@ -111,6 +111,14 @@ export const networkApi = {
   getInfrastructurePlan() {
     return apiGet("/api/network/infrastructure-plan");
   },
+
+  optimizeExpansion(payload) {
+    return apiPost("/api/network/optimize-expansion", payload);
+  },
+
+  createMaintenancePlan(payload) {
+    return apiPost("/api/network/maintenance-plan", payload);
+  },
 };
 
 export const predictionApi = {
