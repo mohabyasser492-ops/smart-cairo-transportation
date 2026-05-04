@@ -112,3 +112,17 @@ export const networkApi = {
     return apiGet("/api/network/infrastructure-plan");
   },
 };
+
+export const predictionApi = {
+  predictTraffic(payload) {
+    return apiPost("/api/prediction/traffic", payload);
+  },
+
+  predictRouteTraffic(payload) {
+    return apiPost("/api/prediction/route-traffic", payload);
+  },
+
+  getModelMetrics() {
+    return apiGet("/api/prediction/model-metrics");
+  },
+};
