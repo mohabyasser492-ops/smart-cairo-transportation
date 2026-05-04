@@ -6,8 +6,12 @@ export default function App() {
   return (
     <div className="app-layout">
       <Navbar />
-      <AppRoutes />
+
+      <main className="main-content">
+        <div className="content-container page-enter">
+          <AppRoutes />
+        </div>
+      </main>
     </div>
   );
 }
-     
