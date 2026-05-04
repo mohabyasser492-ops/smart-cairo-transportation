@@ -1,25 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { routingApi } from "../api/client";
 import RouteResult from "../components/RouteResult";
 import AlgorithmComparison from "../components/AlgorithmComparison";
-
-const locations = [
-  { value: "Maadi", label: "Maadi" },
-  { value: "Nasr City", label: "Nasr City" },
-  { value: "Downtown Cairo", label: "Downtown Cairo" },
-  { value: "New Cairo", label: "New Cairo" },
-  { value: "Heliopolis", label: "Heliopolis" },
-  { value: "Zamalek", label: "Zamalek" },
-  { value: "6th October City", label: "6th October City" },
-  { value: "Giza", label: "Giza" },
-  { value: "Mohandessin", label: "Mohandessin" },
-  { value: "Dokki", label: "Dokki" },
-  { value: "Shubra", label: "Shubra" },
-  { value: "Helwan", label: "Helwan" },
-  { value: "New Administrative Capital", label: "New Administrative Capital" },
-  { value: "Al Rehab", label: "Al Rehab" },
-  { value: "Sheikh Zayed", label: "Sheikh Zayed" },
-];
+import { useLocationOptions } from "../hooks/useLocationOptions";
+import { pageTransition, resultReveal, buttonMotion } from "../ui/motion";
 
 const departureTimes = [
   { value: "08:30", label: "Morning Peak (08:30)" },
@@ -29,12 +14,27 @@ const departureTimes = [
 ];
 
 export default function RoutePlanner() {
+  const { options: locations, loading: loadingLocations, error: locationsError } =
+    useLocationOptions({ includeFacilities: false });
+
+  const defaultSource = locations[0]?.value || "";
+  const defaultDestination = locations[1]?.value || locations[0]?.value || "";
+
   const [form, setForm] = useState({
-    source: "Maadi",
-    destination: "Downtown Cairo",
+    source: "",
+    destination: "",
     departure_time: "08:30",
     day_type: "weekday",
   });
+
+  useEffect(() => {
+    if (!locations.length) return;
+    setForm((previous) => ({
+      ...previous,
+      source: previous.source || defaultSource,
+      destination: previous.destination || defaultDestination,
+    }));
+  }, [defaultDestination, defaultSource, locations.length]);
 
   const [routeResult, setRouteResult] = useState(null);
   const [comparison, setComparison] = useState(null);
@@ -42,31 +42,21 @@ export default function RoutePlanner() {
   const [loadingComparison, setLoadingComparison] = useState(false);
   const [error, setError] = useState("");
 
+  const formDisabled = loadingLocations || !locations.length;
+
   function handleChange(event) {
     const { name, value } = event.target;
-
-    setForm((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
+    setForm((previous) => ({ ...previous, [name]: value }));
   }
 
   async function handleTimeDependentRoute(event) {
     event.preventDefault();
-
     setError("");
     setRouteResult(null);
     setLoadingRoute(true);
 
     try {
-      const payload = {
-        source: form.source,
-        destination: form.destination,
-        departure_time: form.departure_time,
-        day_type: form.day_type,
-      };
-
-      const data = await routingApi.timeDependentRoute(payload);
+      const data = await routingApi.timeDependentRoute(form);
       setRouteResult(data);
     } catch (err) {
       setError(err.message || "Could not load route result.");
@@ -81,17 +71,10 @@ export default function RoutePlanner() {
     setLoadingRoute(true);
 
     try {
-      const payload = {
-        source: form.source,
-        destination: form.destination,
-        departure_time: form.departure_time,
-        day_type: form.day_type,
-      };
-
-      const data = await routingApi.bestRouteByTime(payload);
+      const data = await routingApi.bestRouteByTime(form);
       setRouteResult(data);
     } catch (err) {
-      setError(err.message || "Could not load best route by time.");
+      setError(err.message || "Could not load best route.");
     } finally {
       setLoadingRoute(false);
     }
@@ -103,124 +86,147 @@ export default function RoutePlanner() {
     setLoadingComparison(true);
 
     try {
-      const payload = {
+      const data = await routingApi.compareDijkstraVsAstar({
         source: form.source,
         destination: form.destination,
         weight: "distance",
-      };
-
-      const data = await routingApi.compareDijkstraVsAstar(payload);
+      });
       setComparison(data);
     } catch (err) {
-      setError(err.message || "Could not load algorithm comparison.");
+      setError(err.message || "Could not load routing comparison.");
     } finally {
       setLoadingComparison(false);
     }
   }
 
+  const locationsCount = useMemo(() => locations.length, [locations.length]);
+
   return (
-    <section>
+    <motion.div {...pageTransition}>
       <div className="page-header">
-        <p className="eyebrow">Shortest Path + Traffic-Aware Routing</p>
+        <p className="eyebrow">Routing</p>
         <h1>Route Planner</h1>
         <p>
-          Select a source, destination, and departure time to run a
-          traffic-aware route search. You can also compare Dijkstra and A*.
+          Find efficient routes across Cairo using traffic-aware path selection and
+          time-based routing inputs.
         </p>
       </div>
 
-      <div className="planner-layout">
-        <form className="form-card" onSubmit={handleTimeDependentRoute}>
-          <h3>Route Inputs</h3>
-
-          <label>
-            Source
-            <select
-              name="source"
-              value={form.source}
-              onChange={handleChange}
-            >
-              {locations.map((location) => (
-                <option key={location.value} value={location.value}>
-                  {location.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Destination
-            <select
-              name="destination"
-              value={form.destination}
-              onChange={handleChange}
-            >
-              {locations.map((location) => (
-                <option key={location.value} value={location.value}>
-                  {location.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Departure Time
-            <select
-              name="departure_time"
-              value={form.departure_time}
-              onChange={handleChange}
-            >
-              {departureTimes.map((time) => (
-                <option key={time.value} value={time.value}>
-                  {time.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Day Type
-            <select
-              name="day_type"
-              value={form.day_type}
-              onChange={handleChange}
-            >
-              <option value="weekday">Weekday</option>
-              <option value="weekend">Weekend</option>
-            </select>
-          </label>
-
-          <div className="button-row">
-            <button type="submit" disabled={loadingRoute}>
-              {loadingRoute ? "Searching..." : "Run Time-Dependent Route"}
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleBestRouteByTime}
-              disabled={loadingRoute}
-            >
-              {loadingRoute ? "Searching..." : "Best Route By Time"}
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleCompareAlgorithms}
-              disabled={loadingComparison}
-            >
-              {loadingComparison ? "Comparing..." : "Compare Dijkstra vs A*"}
-            </button>
-          </div>
-
-          {error && <div className="error-box">{error}</div>}
-        </form>
-
-        <RouteResult result={routeResult} />
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span>Locations</span>
+          <strong>{loadingLocations ? "..." : locationsCount}</strong>
+          <p>Origins and destinations loaded dynamically from the backend dataset</p>
+        </div>
+        <div className="stat-card">
+          <span>Departure Windows</span>
+          <strong>{departureTimes.length}</strong>
+          <p>Peak and off-peak routing scenarios supported</p>
+        </div>
+        <div className="stat-card">
+          <span>Route Modes</span>
+          <strong>2</strong>
+          <p>Standard time-aware routing and best-route-by-time planning</p>
+        </div>
+        <div className="stat-card">
+          <span>Comparison</span>
+          <strong>Live</strong>
+          <p>Review Dijkstra versus A* search efficiency on the same origin and destination</p>
+        </div>
       </div>
 
-      <AlgorithmComparison comparison={comparison} />
-    </section>
+      {(error || locationsError) && <div className="error-box">{error || locationsError}</div>}
+
+      <div className="planner-layout">
+        <div className="form-card">
+          <h3>Routing Inputs</h3>
+          <form onSubmit={handleTimeDependentRoute}>
+            <label>
+              Source
+              <select
+                name="source"
+                value={form.source}
+                onChange={handleChange}
+                disabled={formDisabled}
+              >
+                {locations.map((location) => (
+                  <option key={location.value} value={location.value}>
+                    {location.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Destination
+              <select
+                name="destination"
+                value={form.destination}
+                onChange={handleChange}
+                disabled={formDisabled}
+              >
+                {locations.map((location) => (
+                  <option key={location.value} value={location.value}>
+                    {location.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Departure Time
+              <select name="departure_time" value={form.departure_time} onChange={handleChange}>
+                {departureTimes.map((time) => (
+                  <option key={time.value} value={time.value}>
+                    {time.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Day Type
+              <select name="day_type" value={form.day_type} onChange={handleChange}>
+                <option value="weekday">Weekday</option>
+                <option value="weekend">Weekend</option>
+              </select>
+            </label>
+
+            <div className="button-row">
+              <motion.button {...buttonMotion} type="submit" disabled={formDisabled || loadingRoute}>
+                {loadingRoute ? "Searching..." : "Find Route"}
+              </motion.button>
+              <motion.button
+                {...buttonMotion}
+                type="button"
+                className="secondary-button"
+                onClick={handleBestRouteByTime}
+                disabled={formDisabled || loadingRoute}
+              >
+                {loadingRoute ? "Searching..." : "Find Best Route"}
+              </motion.button>
+              <motion.button
+                {...buttonMotion}
+                type="button"
+                className="secondary-button"
+                onClick={handleCompareAlgorithms}
+                disabled={formDisabled || loadingComparison}
+              >
+                {loadingComparison ? "Comparing..." : "Compare Routing Methods"}
+              </motion.button>
+            </div>
+          </form>
+        </div>
+
+        <div className="comparison-section">
+          <motion.div className="result-card" {...resultReveal}>
+            <RouteResult result={routeResult} />
+          </motion.div>
+          <motion.div className="result-card" {...resultReveal}>
+            <AlgorithmComparison comparison={comparison} />
+          </motion.div>
+        </div>
+      </div>
+    </motion.div>
   );
 }

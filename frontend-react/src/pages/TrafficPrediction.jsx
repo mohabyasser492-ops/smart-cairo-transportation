@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import {
   BarChart,
   Bar,
@@ -9,6 +10,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { dataApi, predictionApi } from "../api/client";
+import { pageTransition, resultReveal, buttonMotion } from "../ui/motion";
 
 const daysOfWeek = [
   "Monday",
@@ -121,8 +123,7 @@ export default function TrafficPrediction() {
 
     setRoadForm((prev) => ({
       ...prev,
-      [name]:
-        type === "checkbox" ? checked : name === "hour" ? Number(value) : value,
+      [name]: type === "checkbox" ? checked : name === "hour" ? Number(value) : value,
     }));
   }
 
@@ -131,8 +132,7 @@ export default function TrafficPrediction() {
 
     setRouteForm((prev) => ({
       ...prev,
-      [name]:
-        type === "checkbox" ? checked : name === "hour" ? Number(value) : value,
+      [name]: type === "checkbox" ? checked : name === "hour" ? Number(value) : value,
     }));
   }
 
@@ -147,7 +147,7 @@ export default function TrafficPrediction() {
       const data = await predictionApi.predictTraffic(roadForm);
       setRoadPrediction(data);
     } catch (err) {
-      setError(err.message || "Could not predict road traffic.");
+      setError(err.message || "Could not predict road conditions.");
     } finally {
       setLoadingRoad(false);
     }
@@ -164,7 +164,7 @@ export default function TrafficPrediction() {
       const data = await predictionApi.predictRouteTraffic(routeForm);
       setRoutePrediction(data);
     } catch (err) {
-      setError(err.message || "Could not predict route traffic.");
+      setError(err.message || "Could not predict route conditions.");
     } finally {
       setLoadingRoute(false);
     }
@@ -202,56 +202,64 @@ export default function TrafficPrediction() {
   }, [metrics]);
 
   return (
-    <section>
-      <div className="page-header">
-        <p className="eyebrow">ML Bonus</p>
+    <motion.section {...pageTransition}>
+      <motion.div className="page-header" {...resultReveal}>
+        <p className="eyebrow">Traffic Intelligence</p>
         <h1>Traffic Prediction</h1>
         <p>
-          Predict traffic for a single road or a full route using the trained
-          model, then inspect speed estimates, traffic level, route segments,
-          confidence, and model performance metrics.
+          Forecast road and route conditions using historical traffic patterns
+          and model-based speed estimation.
         </p>
-      </div>
+      </motion.div>
 
       {error && <div className="error-box">{error}</div>}
 
-      <div className="stats-grid">
+      <motion.div
+        className="stats-grid"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: "easeOut", delay: 0.05 }}
+      >
         <div className="stat-card">
-          <span>Prediction Modes</span>
+          <span>Forecast Modes</span>
           <strong>2</strong>
-          <p>Single-road prediction and full-route prediction</p>
+          <p>Road-level forecasting and full route forecasting</p>
         </div>
 
         <div className="stat-card">
           <span>Road Records</span>
           <strong>{roadOptions.length}</strong>
-          <p>Road IDs loaded directly from backend infrastructure data</p>
+          <p>Road segments loaded directly from the infrastructure dataset</p>
         </div>
 
         <div className="stat-card">
           <span>Weather Scenarios</span>
           <strong>{weatherOptions.length}</strong>
-          <p>clear, cloudy, rain, storm, and fog</p>
+          <p>Clear, cloudy, rain, storm, and fog scenarios supported</p>
         </div>
 
         <div className="stat-card">
-          <span>Model Metrics</span>
-          <strong>{loadingMetrics ? "..." : metrics ? "Loaded" : "N/A"}</strong>
-          <p>Performance values retrieved from the saved prediction model</p>
+          <span>Model Performance</span>
+          <strong>{loadingMetrics ? "..." : metrics ? "Ready" : "N/A"}</strong>
+          <p>Saved model metrics and feature details available for review</p>
         </div>
-      </div>
+      </motion.div>
 
       <div className="prediction-section">
         <div className="prediction-section-header">
-          <h2>Single Road Traffic Prediction</h2>
-          <p>
-            Predict the expected speed and traffic level for one specific road.
-          </p>
+          <h2>Road Forecast</h2>
+          <p>Forecast the expected speed and congestion level for a single road segment.</p>
         </div>
 
         <div className="prediction-layout">
-          <form className="form-card prediction-form-card" onSubmit={handleRoadPrediction}>
-            <h3>Road Prediction Inputs</h3>
+          <motion.form
+            className="form-card prediction-form-card"
+            onSubmit={handleRoadPrediction}
+            initial={{ opacity: 0, x: -14 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.32, ease: "easeOut" }}
+          >
+            <h3>Road Forecast Inputs</h3>
 
             <label>
               Road ID
@@ -321,19 +329,27 @@ export default function TrafficPrediction() {
             </label>
 
             <div className="button-row">
-              <button type="submit" disabled={loadingRoad}>
-                {loadingRoad ? "Predicting..." : "Predict Road Traffic"}
-              </button>
+              <motion.button
+                {...buttonMotion}
+                type="submit"
+                disabled={loadingRoad}
+              >
+                {loadingRoad ? "Forecasting..." : "Generate Road Forecast"}
+              </motion.button>
             </div>
-          </form>
+          </motion.form>
 
-          <div className="result-card prediction-result-card">
-            <h3>Road Prediction Result</h3>
+          <motion.div
+            className="result-card prediction-result-card"
+            {...resultReveal}
+            key={roadPrediction ? "road-forecast-loaded" : "road-forecast-empty"}
+          >
+            <h3>Road Forecast Result</h3>
 
             {!roadPrediction ? (
               <div className="empty-state prediction-empty-state">
-                Predict a road to see predicted speed, traffic level, confidence,
-                and the features used by the model.
+                Generate a road forecast to review predicted speed, congestion,
+                confidence, and model inputs.
               </div>
             ) : (
               <>
@@ -349,7 +365,7 @@ export default function TrafficPrediction() {
                   </div>
 
                   <div>
-                    <span>Traffic Level</span>
+                    <span>Congestion Level</span>
                     <strong>
                       <LevelBadge level={roadPrediction.predicted_traffic_level} />
                     </strong>
@@ -362,7 +378,7 @@ export default function TrafficPrediction() {
                 </div>
 
                 {selectedRoadMeta && (
-                  <div className="details-card prediction-subcard">
+                  <motion.div className="details-card prediction-subcard" {...resultReveal}>
                     <h4>Road Metadata</h4>
                     <div className="result-grid">
                       <div>
@@ -390,11 +406,11 @@ export default function TrafficPrediction() {
                         <strong>{selectedRoadMeta.condition}</strong>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
-                <div className="details-card prediction-subcard">
-                  <h4>Features Used</h4>
+                <motion.div className="details-card prediction-subcard" {...resultReveal}>
+                  <h4>Model Inputs</h4>
                   <div className="result-grid">
                     <div>
                       <span>Hour</span>
@@ -433,25 +449,31 @@ export default function TrafficPrediction() {
                       <strong>{roadPrediction.features_used?.historical_flow}</strong>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               </>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
 
       <div className="prediction-section">
         <div className="prediction-section-header">
-          <h2>Route Traffic Prediction</h2>
+          <h2>Route Forecast</h2>
           <p>
-            Predict traffic for an entire route and inspect each road segment
-            individually.
+            Forecast traffic conditions for an entire route and inspect segment-level
+            predictions.
           </p>
         </div>
 
         <div className="prediction-layout">
-          <form className="form-card prediction-form-card" onSubmit={handleRoutePrediction}>
-            <h3>Route Prediction Inputs</h3>
+          <motion.form
+            className="form-card prediction-form-card"
+            onSubmit={handleRoutePrediction}
+            initial={{ opacity: 0, x: -14 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.32, ease: "easeOut" }}
+          >
+            <h3>Route Forecast Inputs</h3>
 
             <label>
               Source
@@ -547,19 +569,27 @@ export default function TrafficPrediction() {
             </label>
 
             <div className="button-row">
-              <button type="submit" disabled={loadingRoute}>
-                {loadingRoute ? "Predicting..." : "Predict Route Traffic"}
-              </button>
+              <motion.button
+                {...buttonMotion}
+                type="submit"
+                disabled={loadingRoute}
+              >
+                {loadingRoute ? "Forecasting..." : "Generate Route Forecast"}
+              </motion.button>
             </div>
-          </form>
+          </motion.form>
 
-          <div className="result-card prediction-result-card">
-            <h3>Route Prediction Result</h3>
+          <motion.div
+            className="result-card prediction-result-card"
+            {...resultReveal}
+            key={routePrediction ? "route-forecast-loaded" : "route-forecast-empty"}
+          >
+            <h3>Route Forecast Result</h3>
 
             {!routePrediction ? (
               <div className="empty-state prediction-empty-state">
-                Predict a route to inspect the generated path, average speed,
-                overall traffic level, and segment-by-segment predictions.
+                Generate a route forecast to inspect the path, average speed,
+                overall congestion, and segment-level predictions.
               </div>
             ) : (
               <>
@@ -590,14 +620,16 @@ export default function TrafficPrediction() {
                   </div>
 
                   <div>
-                    <span>Overall Traffic Level</span>
+                    <span>Overall Congestion Level</span>
                     <strong>
-                      <LevelBadge level={routePrediction.overall_predicted_traffic_level} />
+                      <LevelBadge
+                        level={routePrediction.overall_predicted_traffic_level}
+                      />
                     </strong>
                   </div>
                 </div>
 
-                <div className="details-card prediction-subcard">
+                <motion.div className="details-card prediction-subcard" {...resultReveal}>
                   <h4>Segment Speed Chart</h4>
 
                   {routeChartData.length ? (
@@ -613,9 +645,9 @@ export default function TrafficPrediction() {
                   ) : (
                     <div className="empty-state">No chart data available.</div>
                   )}
-                </div>
+                </motion.div>
 
-                <div className="details-card prediction-subcard">
+                <motion.div className="details-card prediction-subcard" {...resultReveal}>
                   <h4>Segment Predictions</h4>
 
                   {routePrediction.segment_predictions?.length ? (
@@ -641,34 +673,39 @@ export default function TrafficPrediction() {
                   ) : (
                     <div className="empty-state">No segment predictions available.</div>
                   )}
-                </div>
+                </motion.div>
               </>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      <div className="result-card">
-        <h3>Model Metrics</h3>
+      <motion.div className="result-card" {...resultReveal}>
+        <h3>Model Performance</h3>
 
         {loadingMetrics ? (
-          <div className="empty-state">Loading model metrics...</div>
+          <div className="empty-state">Loading model performance...</div>
         ) : !metrics ? (
-          <div className="empty-state">No model metrics available.</div>
+          <div className="empty-state">No model performance data available.</div>
         ) : (
           <>
             <div className="metrics-grid">
               {numericMetrics.map((metric) => (
-                <div key={metric.key} className="metric-card">
+                <motion.div
+                  key={metric.key}
+                  className="metric-card"
+                  whileHover={{ y: -3 }}
+                  transition={{ duration: 0.18 }}
+                >
                   <span>{metric.label}</span>
                   <strong>{String(metric.value)}</strong>
-                </div>
+                </motion.div>
               ))}
             </div>
 
             {!!featureNames.length && (
-              <div className="details-card prediction-subcard">
-                <h4>Feature Names</h4>
+              <motion.div className="details-card prediction-subcard" {...resultReveal}>
+                <h4>Feature Set</h4>
                 <div className="feature-names-box">
                   {featureNames.map((feature) => (
                     <span key={feature.trim()} className="feature-chip">
@@ -676,11 +713,11 @@ export default function TrafficPrediction() {
                     </span>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
           </>
         )}
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   );
 }

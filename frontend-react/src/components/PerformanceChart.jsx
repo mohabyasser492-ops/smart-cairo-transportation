@@ -15,9 +15,9 @@ export default function PerformanceChart({ data = [] }) {
 
   return (
     <div className="chart-stack">
-      <div className="chart-card">
-        <h3>Visited Nodes Comparison</h3>
-        <ResponsiveContainer width="100%" height={260}>
+      <div className="details-card">
+        <h4>Visited Nodes Comparison</h4>
+        <ResponsiveContainer width="100%" height={240}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="algorithm" />
@@ -28,9 +28,9 @@ export default function PerformanceChart({ data = [] }) {
         </ResponsiveContainer>
       </div>
 
-      <div className="chart-card">
-        <h3>Runtime Comparison (ms)</h3>
-        <ResponsiveContainer width="100%" height={260}>
+      <div className="details-card">
+        <h4>Runtime Comparison (ms)</h4>
+        <ResponsiveContainer width="100%" height={240}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="algorithm" />
@@ -41,9 +41,9 @@ export default function PerformanceChart({ data = [] }) {
         </ResponsiveContainer>
       </div>
 
-      <div className="chart-card">
-        <h3>Total Cost Comparison</h3>
-        <ResponsiveContainer width="100%" height={260}>
+      <div className="details-card">
+        <h4>Total Cost Comparison</h4>
+        <ResponsiveContainer width="100%" height={240}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="algorithm" />
