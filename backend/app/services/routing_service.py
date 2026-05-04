@@ -3,6 +3,7 @@ from app.algorithms.dijkstra import dijkstra_shortest_path
 from app.algorithms.time_dependent_routing import time_dependent_shortest_path
 from app.graph.build_graph import build_road_graph
 from app.services.data_service import data_service
+from app.services.transit_routing_service import transit_routing_service
 
 
 class RoutingService:
@@ -112,6 +113,18 @@ class RoutingService:
                 },
             },
         }
+
+    def find_public_transit_route(
+        self,
+        source: str,
+        destination: str,
+        preference: str = "fastest",
+    ):
+        return transit_routing_service.find_route(
+            source=source,
+            destination=destination,
+            preference=preference,
+        )
 
     def compare_dijkstra_and_astar(
         self,
@@ -302,7 +315,8 @@ class RoutingService:
         astar_visited = int(astar_result.get("visited_nodes_count", 0))
 
         emergency_type = (emergency_type or "").strip().lower()
-        prefer_runtime = emergency_type in {"ambulance", "fire_truck"}
+        runtime_gap = abs(dijkstra_runtime - astar_runtime)
+        prefer_runtime = emergency_type in {"ambulance", "fire_truck"} and runtime_gap >= 0.5
 
         if astar_cost < dijkstra_cost:
             return {
@@ -315,19 +329,6 @@ class RoutingService:
                 "winner": "dijkstra",
                 "winner_reason": "Dijkstra was selected because it produced the lower route cost for emergency dispatch.",
                 "decision_basis": "lowest_total_cost",
-            }
-
-        if prefer_runtime and astar_runtime < dijkstra_runtime:
-            return {
-                "winner": "astar",
-                "winner_reason": "Both routes had the same cost, so A* was selected because it finished faster, which is preferred for critical emergency types.",
-                "decision_basis": "lowest_runtime_ms",
-            }
-        if prefer_runtime and dijkstra_runtime < astar_runtime:
-            return {
-                "winner": "dijkstra",
-                "winner_reason": "Both routes had the same cost, so Dijkstra was selected because it finished faster, which is preferred for critical emergency types.",
-                "decision_basis": "lowest_runtime_ms",
             }
 
         if astar_visited < dijkstra_visited:
@@ -343,10 +344,23 @@ class RoutingService:
                 "decision_basis": "fewest_visited_nodes",
             }
 
+        if prefer_runtime and astar_runtime < dijkstra_runtime:
+            return {
+                "winner": "astar",
+                "winner_reason": "Both routes had the same cost and similar search effort, so A* was selected because it finished meaningfully faster for a critical emergency type.",
+                "decision_basis": "lowest_runtime_ms",
+            }
+        if prefer_runtime and dijkstra_runtime < astar_runtime:
+            return {
+                "winner": "dijkstra",
+                "winner_reason": "Both routes had the same cost and similar search effort, so Dijkstra was selected because it finished meaningfully faster for a critical emergency type.",
+                "decision_basis": "lowest_runtime_ms",
+            }
+
         fallback_winner = "astar" if astar_runtime <= dijkstra_runtime else "dijkstra"
         return {
             "winner": fallback_winner,
-            "winner_reason": "Both routes were effectively identical in cost and search effort, so the faster runtime was used as the final tiebreaker.",
+            "winner_reason": "Both routes were effectively identical in cost and search effort, so runtime was used as the final tiebreaker.",
             "decision_basis": "final_runtime_tiebreak",
         }
 
