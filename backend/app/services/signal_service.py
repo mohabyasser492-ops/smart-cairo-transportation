@@ -1,4 +1,3 @@
-# TODO: implement service functions
 from typing import Any, Dict, List
 
 from app.algorithms.greedy_traffic import (
@@ -11,27 +10,12 @@ from app.services.data_service import data_service
 
 
 class SignalService:
-    def optimize_signals(
-        self,
-        total_cycle_time: int = 120,
-        min_green_time: int = 20,
-        max_green_time: int = 90,
-    ) -> Dict[str, Any]:
-        intersections = self._build_intersection_data()
-
-        return optimize_traffic_signals_greedy(
-            intersections=intersections,
-            total_cycle_time=total_cycle_time,
-            min_green_time=min_green_time,
-            max_green_time=max_green_time,
-        )
-
     def get_congestion_hotspots(self) -> Dict[str, Any]:
         intersections = self._build_intersection_data()
 
         return detect_congestion_hotspots(
             intersections=intersections,
-            threshold=80,
+            threshold=75,
         )
 
     def get_intersections_status(self) -> Dict[str, Any]:
@@ -79,6 +63,21 @@ class SignalService:
             "intersections": status_records,
         }
 
+    def optimize_signals(
+        self,
+        total_cycle_time: int = 120,
+        min_green_time: int = 20,
+        max_green_time: int = 90,
+    ) -> Dict[str, Any]:
+        intersections = self._build_intersection_data()
+
+        return optimize_traffic_signals_greedy(
+            intersections=intersections,
+            total_cycle_time=total_cycle_time,
+            min_green_time=min_green_time,
+            max_green_time=max_green_time,
+        )
+
     def _build_intersection_data(self) -> List[Dict[str, Any]]:
         traffic_flow_data = data_service.get_traffic_flow()
         existing_roads_data = data_service.get_existing_roads()
@@ -115,6 +114,10 @@ class SignalService:
                 or record.get("traffic_volume")
                 or record.get("flow")
                 or record.get("incoming_flow")
+                or record.get("morning_peak")
+                or record.get("evening_peak")
+                or record.get("afternoon")
+                or record.get("night")
                 or 0
             )
 
@@ -234,3 +237,4 @@ class SignalService:
 
 
 signal_service = SignalService()
+
