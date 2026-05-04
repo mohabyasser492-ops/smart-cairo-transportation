@@ -84,7 +84,7 @@ class TransitRoutingService:
         j = stops.index(end_stop)
         s = min(i, j)
         e = max(i, j)
-        path = stops[s:e + 1]
+        path = stops[s : e + 1]
         return list(reversed(path)) if i > j else path
 
     def _build_candidate(self, source, destination, path, segments, transfers):
