@@ -134,3 +134,17 @@ export const predictionApi = {
     return apiGet("/api/prediction/model-metrics");
   },
 };
+
+export const trafficApi = {
+  optimizeSignals(payload) {
+    return apiPost("/api/traffic/signals/optimize", payload);
+  },
+
+  getCongestionHotspots() {
+    return apiGet("/api/traffic/congestion-hotspots");
+  },
+
+  getIntersectionsStatus() {
+    return apiGet("/api/traffic/intersections/status");
+  },
+};
