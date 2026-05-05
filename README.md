@@ -1,12 +1,10 @@
 # Smart Cairo Transportation Network Optimization
 
-This repository is prepared for the CSE112 project.
-
 ## Stack
 - React + Vite frontend
 - Python FastAPI backend
 - Python/scikit-learn ML traffic prediction bonus
-
+ 
 ## Data
 Ready JSON data is stored in:
 
