@@ -1,16 +1,17 @@
 {
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite",
+    "build": "vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "axios": "^1.16.0",
+    "framer-motion": "^12.38.0",
     "react": "latest",
     "react-dom": "latest",
-    "react-router-dom": "latest",
-    "recharts": "latest"
-  },
-  "devDependencies": {}
+    "react-router-dom": "^7.14.2",
+    "recharts": "latest",
+    "vite": "latest"
+  }
 }
