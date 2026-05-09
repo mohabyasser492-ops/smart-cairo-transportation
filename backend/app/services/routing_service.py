@@ -4,55 +4,43 @@ from app.algorithms.time_dependent_routing import time_dependent_shortest_path
 from app.graph.build_graph import build_road_graph
 from app.services.data_service import data_service
 from app.services.transit_routing_service import transit_routing_service
+from app.utils.map_geometry import path_to_route_geometry
 
 
 class RoutingService:
-    def find_shortest_path(
-        self,
-        source: str,
-        destination: str,
-        weight: str = "distance",
-    ):
+    def _attach_route_geometry(self, result: dict):
+        if not result:
+            return result
+
+        path = result.get("path", [])
+        result["route_geometry"] = path_to_route_geometry(path)
+        return result
+
+    def find_shortest_path(self, source: str, destination: str, weight: str = "distance"):
         graph = build_road_graph()
-        return dijkstra_shortest_path(
+        result = dijkstra_shortest_path(
             graph=graph,
             source=source,
             destination=destination,
             weight=weight,
         )
+        return self._attach_route_geometry(result)
 
-    def find_astar_path(
-        self,
-        source: str,
-        destination: str,
-        weight: str = "distance",
-    ):
+    def find_astar_path(self, source: str, destination: str, weight: str = "distance"):
         graph = build_road_graph()
         coordinates = self._get_all_node_coordinates()
-        return astar_shortest_path(
+        result = astar_shortest_path(
             graph=graph,
             source=source,
             destination=destination,
             coordinates=coordinates,
             weight=weight,
         )
+        return self._attach_route_geometry(result)
 
-    def find_emergency_route(
-        self,
-        source: str,
-        destination: str,
-        emergency_type: str = "ambulance",
-    ):
-        dijkstra_result = self.find_shortest_path(
-            source=source,
-            destination=destination,
-            weight="distance",
-        )
-        astar_result = self.find_astar_path(
-            source=source,
-            destination=destination,
-            weight="distance",
-        )
+    def find_emergency_route(self, source: str, destination: str, emergency_type: str = "ambulance"):
+        dijkstra_result = self.find_shortest_path(source=source, destination=destination, weight="distance")
+        astar_result = self.find_astar_path(source=source, destination=destination, weight="distance")
 
         dijkstra_cost = self._extract_total_cost(dijkstra_result)
         astar_cost = self._extract_total_cost(astar_result)
@@ -76,7 +64,7 @@ class RoutingService:
             emergency_type=emergency_type,
         )
 
-        return {
+        result = {
             **chosen_base,
             "emergency_type": emergency_type,
             "priority": emergency_priority,
@@ -114,34 +102,19 @@ class RoutingService:
             },
         }
 
-    def find_public_transit_route(
-        self,
-        source: str,
-        destination: str,
-        preference: str = "fastest",
-    ):
-        return transit_routing_service.find_route(
+        return self._attach_route_geometry(result)
+
+    def find_public_transit_route(self, source: str, destination: str, preference: str = "fastest"):
+        result = transit_routing_service.find_route(
             source=source,
             destination=destination,
             preference=preference,
         )
+        return self._attach_route_geometry(result)
 
-    def compare_dijkstra_and_astar(
-        self,
-        source: str,
-        destination: str,
-        weight: str = "distance",
-    ):
-        dijkstra_result = self.find_shortest_path(
-            source=source,
-            destination=destination,
-            weight=weight,
-        )
-        astar_result = self.find_astar_path(
-            source=source,
-            destination=destination,
-            weight=weight,
-        )
+    def compare_dijkstra_and_astar(self, source: str, destination: str, weight: str = "distance"):
+        dijkstra_result = self.find_shortest_path(source=source, destination=destination, weight=weight)
+        astar_result = self.find_astar_path(source=source, destination=destination, weight=weight)
 
         dijkstra_cost = self._extract_total_cost(dijkstra_result)
         astar_cost = self._extract_total_cost(astar_result)
@@ -157,19 +130,13 @@ class RoutingService:
         else:
             if astar_visited < dijkstra_visited:
                 winner = "astar"
-                winner_reason = (
-                    "Both algorithms had equal total cost, so A* wins because it visited fewer nodes."
-                )
+                winner_reason = "Both algorithms had equal total cost, so A* wins because it visited fewer nodes."
             elif dijkstra_visited < astar_visited:
                 winner = "dijkstra"
-                winner_reason = (
-                    "Both algorithms had equal total cost, so Dijkstra wins because it visited fewer nodes."
-                )
+                winner_reason = "Both algorithms had equal total cost, so Dijkstra wins because it visited fewer nodes."
             else:
                 winner = "tie"
-                winner_reason = (
-                    "Both algorithms had equal total cost and visited the same number of nodes."
-                )
+                winner_reason = "Both algorithms had equal total cost and visited the same number of nodes."
 
         return {
             "source": source,
@@ -194,40 +161,26 @@ class RoutingService:
             },
         }
 
-    def find_time_dependent_route(
-        self,
-        source: str,
-        destination: str,
-        departure_time: str,
-        day_type: str = "weekday",
-    ):
+    def find_time_dependent_route(self, source: str, destination: str, departure_time: str, day_type: str = "weekday"):
         graph = build_road_graph()
-        return time_dependent_shortest_path(
+        result = time_dependent_shortest_path(
             graph=graph,
             source=source,
             destination=destination,
             departure_time=departure_time,
             day_type=day_type,
         )
+        return self._attach_route_geometry(result)
 
-    def find_best_route_by_time(
-        self,
-        source: str,
-        destination: str,
-        departure_time: str,
-        day_type: str = "weekday",
-    ):
-        normal_route = self.find_shortest_path(
-            source=source,
-            destination=destination,
-            weight="distance",
-        )
+    def find_best_route_by_time(self, source: str, destination: str, departure_time: str, day_type: str = "weekday"):
+        normal_route = self.find_shortest_path(source=source, destination=destination, weight="distance")
         time_dependent_route = self.find_time_dependent_route(
             source=source,
             destination=destination,
             departure_time=departure_time,
             day_type=day_type,
         )
+
         return {
             "source": source,
             "destination": destination,
@@ -244,15 +197,18 @@ class RoutingService:
     def _get_all_node_coordinates(self):
         coordinates = {}
         all_nodes = data_service.get_neighborhoods() + data_service.get_facilities()
+
         for node in all_nodes:
             name = node.get("name")
             x = node.get("x")
             y = node.get("y")
+
             if name is not None and x is not None and y is not None:
                 coordinates[name] = {
                     "x": float(x),
                     "y": float(y),
                 }
+
         return coordinates
 
     def _extract_total_cost(self, result):
@@ -264,21 +220,20 @@ class RoutingService:
             return float(result["cost"])
         return float("inf")
 
-    def _estimate_emergency_time_minutes(
-        self,
-        total_distance_km: float,
-        emergency_type: str,
-    ) -> int | None:
+    def _estimate_emergency_time_minutes(self, total_distance_km: float, emergency_type: str):
         if total_distance_km == float("inf"):
             return None
+
         speed_by_type = {
             "ambulance": 80,
             "fire_truck": 70,
             "police": 85,
         }
+
         speed_kmh = speed_by_type.get(emergency_type, 80)
         if speed_kmh <= 0:
             return None
+
         return round((float(total_distance_km) / speed_kmh) * 60)
 
     def _get_emergency_priority(self, emergency_type: str) -> str:
@@ -289,24 +244,14 @@ class RoutingService:
         }
         return priority_lookup.get(emergency_type, "high")
 
-    def _build_recommended_action(
-        self,
-        emergency_type: str,
-        chosen_algorithm: str,
-        estimated_time_min: int | None,
-    ) -> str:
+    def _build_recommended_action(self, emergency_type: str, chosen_algorithm: str, estimated_time_min):
         eta_text = f" ETA: {estimated_time_min} min." if estimated_time_min is not None else ""
         return (
             f"Dispatch the {emergency_type.replace('_', ' ')} unit immediately "
             f"using the {chosen_algorithm.upper()} route.{eta_text}"
         )
 
-    def _choose_best_emergency_algorithm(
-        self,
-        dijkstra_result: dict,
-        astar_result: dict,
-        emergency_type: str,
-    ) -> dict:
+    def _choose_best_emergency_algorithm(self, dijkstra_result: dict, astar_result: dict, emergency_type: str):
         dijkstra_cost = self._extract_total_cost(dijkstra_result)
         astar_cost = self._extract_total_cost(astar_result)
         dijkstra_runtime = float(dijkstra_result.get("runtime_ms", 0))
@@ -324,6 +269,7 @@ class RoutingService:
                 "winner_reason": "A* was selected because it produced the lower route cost for emergency dispatch.",
                 "decision_basis": "lowest_total_cost",
             }
+
         if dijkstra_cost < astar_cost:
             return {
                 "winner": "dijkstra",
@@ -337,6 +283,7 @@ class RoutingService:
                 "winner_reason": "Both routes had the same cost, so A* was selected because it explored fewer nodes.",
                 "decision_basis": "fewest_visited_nodes",
             }
+
         if dijkstra_visited < astar_visited:
             return {
                 "winner": "dijkstra",
@@ -350,6 +297,7 @@ class RoutingService:
                 "winner_reason": "Both routes had the same cost and similar search effort, so A* was selected because it finished meaningfully faster for a critical emergency type.",
                 "decision_basis": "lowest_runtime_ms",
             }
+
         if prefer_runtime and dijkstra_runtime < astar_runtime:
             return {
                 "winner": "dijkstra",

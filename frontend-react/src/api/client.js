@@ -1,7 +1,13 @@
 import axios from "axios";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+).replace(/\/$/, "");
 
+/**
+ * Optional Axios client.
+ * Some components may use direct axios access later.
+ */
 const client = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,9 +17,9 @@ const client = axios.create({
 
 export default client;
 
-
 function buildUrl(path) {
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
 }
 
 async function parseResponse(response) {
@@ -25,7 +31,7 @@ async function parseResponse(response) {
   }
 
   const text = await response.text();
-  return { message: text };
+  return text;
 }
 
 function extractErrorMessage(body, fallbackStatus) {
@@ -76,15 +82,19 @@ export const routingApi = {
   timeDependentRoute(payload) {
     return apiPost("/api/routing/time-dependent", payload);
   },
+
   bestRouteByTime(payload) {
     return apiPost("/api/routing/best-route-by-time", payload);
   },
+
   compareDijkstraVsAstar(payload) {
     return apiPost("/api/routing/compare/dijkstra-vs-astar", payload);
   },
+
   emergencyRoute(payload) {
     return apiPost("/api/routing/emergency", payload);
   },
+
   publicTransitRoute(payload) {
     return apiPost("/api/routing/public-transit", payload);
   },
@@ -94,27 +104,35 @@ export const dataApi = {
   getNeighborhoods() {
     return apiGet("/api/data/neighborhoods");
   },
+
   getFacilities() {
     return apiGet("/api/data/facilities");
   },
+
   getExistingRoads() {
     return apiGet("/api/data/roads/existing");
   },
+
   getPotentialRoads() {
     return apiGet("/api/data/roads/potential");
   },
+
   getTrafficFlow() {
     return apiGet("/api/data/traffic-flow");
   },
+
   getMetroLines() {
     return apiGet("/api/data/metro-lines");
   },
+
   getBusRoutes() {
     return apiGet("/api/data/bus-routes");
   },
+
   getPublicTransportDemand() {
     return apiGet("/api/data/public-transport-demand");
   },
+
   getSummary() {
     return apiGet("/api/data/summary");
   },
@@ -124,12 +142,15 @@ export const networkApi = {
   getMinimumSpanningTree() {
     return apiGet("/api/network/minimum-spanning-tree");
   },
+
   getInfrastructurePlan() {
     return apiGet("/api/network/infrastructure-plan");
   },
+
   optimizeExpansion(payload) {
     return apiPost("/api/network/optimize-expansion", payload);
   },
+
   createMaintenancePlan(payload) {
     return apiPost("/api/network/maintenance-plan", payload);
   },
@@ -139,9 +160,11 @@ export const predictionApi = {
   predictTraffic(payload) {
     return apiPost("/api/prediction/traffic", payload);
   },
+
   predictRouteTraffic(payload) {
     return apiPost("/api/prediction/route-traffic", payload);
   },
+
   getModelMetrics() {
     return apiGet("/api/prediction/model-metrics");
   },
@@ -151,9 +174,11 @@ export const trafficApi = {
   optimizeSignals(payload) {
     return apiPost("/api/traffic/signals/optimize", payload);
   },
+
   getCongestionHotspots() {
     return apiGet("/api/traffic/congestion-hotspots");
   },
+
   getIntersectionsStatus() {
     return apiGet("/api/traffic/intersections/status");
   },
@@ -164,5 +189,3 @@ export const transitApi = {
     return apiPost("/api/transit/allocate-buses", payload);
   },
 };
-
-export { API_BASE_URL };

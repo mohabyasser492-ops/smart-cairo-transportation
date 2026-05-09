@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from app.algorithms.dp_maintenance import optimize_maintenance_plan
 from app.algorithms.kruskal_mst import kruskal_minimum_spanning_tree
 from app.services.data_service import data_service
+from app.utils.map_geometry import edge_to_route_geometry
 
 
 class NetworkService:
@@ -177,6 +178,7 @@ class NetworkService:
             edges.append(
                 {
                     "road_id": road.get("id") or road.get("road_id"),
+                    "route_geometry": edge_to_route_geometry(source, destination),
                     "source": source,
                     "destination": destination,
                     "distance_km": distance_km,

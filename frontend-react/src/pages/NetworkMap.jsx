@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { dataApi, networkApi } from "../api/client";
-import GraphMap from "../components/GraphMap";
+import RealMap from "../components/RealMap";
+import {
+  buildLocationCollections,
+  normalizeRoads,
+} from "../utils/mapAdapters";
 import { pageTransition, resultReveal } from "../ui/motion";
 
 export default function NetworkMap() {
-  const [neighborhoods, setNeighborhoods] = useState([]);
-  const [facilities, setFacilities] = useState([]);
-  const [existingRoads, setExistingRoads] = useState([]);
-  const [potentialRoads, setPotentialRoads] = useState([]);
+  const [neighborhoodsRaw, setNeighborhoodsRaw] = useState([]);
+  const [facilitiesRaw, setFacilitiesRaw] = useState([]);
+  const [existingRoadsRaw, setExistingRoadsRaw] = useState([]);
+  const [potentialRoadsRaw, setPotentialRoadsRaw] = useState([]);
   const [trafficFlow, setTrafficFlow] = useState([]);
   const [mstData, setMstData] = useState(null);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,11 +48,11 @@ export default function NetworkMap() {
           dataApi.getTrafficFlow(),
         ]);
 
-        setNeighborhoods(neighborhoodsData || []);
-        setFacilities(facilitiesData || []);
-        setExistingRoads(existingRoadsData || []);
-        setPotentialRoads(potentialRoadsData || []);
-        setTrafficFlow(trafficFlowData || []);
+        setNeighborhoodsRaw(Array.isArray(neighborhoodsData) ? neighborhoodsData : []);
+        setFacilitiesRaw(Array.isArray(facilitiesData) ? facilitiesData : []);
+        setExistingRoadsRaw(Array.isArray(existingRoadsData) ? existingRoadsData : []);
+        setPotentialRoadsRaw(Array.isArray(potentialRoadsData) ? potentialRoadsData : []);
+        setTrafficFlow(Array.isArray(trafficFlowData) ? trafficFlowData : []);
 
         try {
           const mst = await networkApi.getMinimumSpanningTree();
@@ -68,13 +71,42 @@ export default function NetworkMap() {
     loadMapData();
   }, []);
 
+  const locationCollections = useMemo(() => {
+    return buildLocationCollections(neighborhoodsRaw, facilitiesRaw);
+  }, [neighborhoodsRaw, facilitiesRaw]);
+
+  const visibleNeighborhoods = useMemo(() => {
+    return showNeighborhoods ? locationCollections.neighborhoods : [];
+  }, [locationCollections.neighborhoods, showNeighborhoods]);
+
+  const visibleFacilities = useMemo(() => {
+    return showFacilities ? locationCollections.facilities : [];
+  }, [locationCollections.facilities, showFacilities]);
+
+  const normalizedExistingRoads = useMemo(() => {
+    const rows = normalizeRoads(
+      existingRoadsRaw,
+      locationCollections.idLookup
+    );
+
+    return showExistingRoads ? rows : [];
+  }, [existingRoadsRaw, locationCollections.idLookup, showExistingRoads]);
+
+  const normalizedPotentialRoads = useMemo(() => {
+    const rows = normalizeRoads(
+      potentialRoadsRaw,
+      locationCollections.idLookup
+    );
+
+    return showPotentialRoads ? rows : [];
+  }, [potentialRoadsRaw, locationCollections.idLookup, showPotentialRoads]);
+
   const trafficLookup = useMemo(() => {
-    const lookup = {};
-
+    const lookup = new Map();
     trafficFlow.forEach((record) => {
-      lookup[record.road_id] = record;
+      const key = String(record.road_id ?? record.id ?? "");
+      lookup.set(key, record);
     });
-
     return lookup;
   }, [trafficFlow]);
 
@@ -88,7 +120,7 @@ export default function NetworkMap() {
 
       if (!best || value > best.value) {
         best = {
-          roadId: record.road_id,
+          roadId: record.road_id ?? record.id,
           value,
         };
       }
@@ -99,14 +131,20 @@ export default function NetworkMap() {
 
   const stats = useMemo(() => {
     return {
-      neighborhoodsCount: neighborhoods.length,
-      facilitiesCount: facilities.length,
-      existingRoadsCount: existingRoads.length,
-      potentialRoadsCount: potentialRoads.length,
+      neighborhoodsCount: neighborhoodsRaw.length,
+      facilitiesCount: facilitiesRaw.length,
+      existingRoadsCount: existingRoadsRaw.length,
+      potentialRoadsCount: potentialRoadsRaw.length,
       mstEdgesCount: mstData?.selected_edges_count ?? 0,
       mstTotalDistance: mstData?.total_distance_km ?? "N/A",
     };
-  }, [neighborhoods, facilities, existingRoads, potentialRoads, mstData]);
+  }, [
+    neighborhoodsRaw.length,
+    facilitiesRaw.length,
+    existingRoadsRaw.length,
+    potentialRoadsRaw.length,
+    mstData,
+  ]);
 
   function renderSelectedDetails() {
     if (!selectedElement) {
@@ -123,36 +161,30 @@ export default function NetworkMap() {
       return (
         <motion.div className="details-card" {...resultReveal}>
           <h3>Location Details</h3>
-
           <div className="result-grid">
             <div>
               <span>Name</span>
               <strong>{node.name}</strong>
             </div>
-
             <div>
               <span>Type</span>
               <strong>{node.type ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>Category</span>
-              <strong>{node.category ?? "N/A"}</strong>
+              <strong>{node.kind ?? node.category ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>Population</span>
               <strong>{node.population ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>X Coordinate</span>
-              <strong>{node.x}</strong>
+              <strong>{node.x ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>Y Coordinate</span>
-              <strong>{node.y}</strong>
+              <strong>{node.y ?? "N/A"}</strong>
             </div>
           </div>
         </motion.div>
@@ -161,46 +193,37 @@ export default function NetworkMap() {
 
     if (selectedElement.kind === "edge") {
       const edge = selectedElement.data;
-      const selectedTraffic =
-        edge.roadCategory === "existing"
-          ? trafficLookup[edge.id]?.[selectedTime]
-          : null;
+      const edgeId = edge.id ?? edge.road_id;
+      const selectedTraffic = trafficLookup.get(String(edgeId))?.[selectedTime] ?? null;
 
       return (
         <motion.div className="details-card" {...resultReveal}>
           <h3>Road Details</h3>
-
           <div className="result-grid">
             <div>
               <span>Road ID</span>
-              <strong>{edge.id ?? edge.road_id ?? "N/A"}</strong>
+              <strong>{edgeId ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>Road Category</span>
-              <strong>{edge.roadCategory ?? "N/A"}</strong>
+              <strong>{edge.roadCategory ?? "existing"}</strong>
             </div>
-
             <div>
               <span>From</span>
               <strong>{edge.fromNode?.name ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>To</span>
               <strong>{edge.toNode?.name ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>Distance</span>
-              <strong>{edge.distance_km ?? "N/A"} km</strong>
+              <strong>{edge.distance_km ?? edge.distance ?? "N/A"} km</strong>
             </div>
-
             <div>
               <span>Condition</span>
               <strong>{edge.condition ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>Capacity</span>
               <strong>
@@ -209,12 +232,10 @@ export default function NetworkMap() {
                   "N/A"}
               </strong>
             </div>
-
             <div>
               <span>Traffic ({selectedTime.replace("_", " ")})</span>
               <strong>{selectedTraffic ?? "N/A"}</strong>
             </div>
-
             <div>
               <span>Construction Cost</span>
               <strong>
@@ -222,7 +243,6 @@ export default function NetworkMap() {
                 {edge.construction_cost_million_egp != null ? " million EGP" : ""}
               </strong>
             </div>
-
             <div>
               <span>Connectivity Overlay</span>
               <strong>{edge.isMstEdge ? "Included" : "Not included"}</strong>
@@ -236,66 +256,50 @@ export default function NetworkMap() {
   }
 
   return (
-    <motion.section {...pageTransition}>
-      <motion.div className="page-header" {...resultReveal}>
+    <motion.div className="page-enter" {...pageTransition}>
+      <div className="page-header">
         <p className="eyebrow">Network Intelligence</p>
         <h1>Network Map</h1>
         <p>
           Explore neighborhoods, facilities, road corridors, traffic conditions,
-          and connectivity overlays in one interactive network view.
+          and connectivity overlays in one interactive real-map view.
         </p>
-      </motion.div>
+      </div>
 
       {loading ? (
-        <div className="empty-state">Loading network intelligence...</div>
+        <div className="placeholder-panel">Loading network intelligence...</div>
       ) : error ? (
         <div className="error-box">{error}</div>
       ) : (
         <>
-          <motion.div
-            className="stats-grid"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.32, ease: "easeOut", delay: 0.05 }}
-          >
+          <div className="stats-grid">
             <div className="stat-card">
               <span>Neighborhoods</span>
               <strong>{stats.neighborhoodsCount}</strong>
-              <p>Residential, mixed-use, business, industrial, and civic areas</p>
+              <p>
+                Residential, mixed-use, business, industrial, and civic areas
+              </p>
             </div>
-
             <div className="stat-card">
               <span>Facilities</span>
               <strong>{stats.facilitiesCount}</strong>
               <p>Hospitals, transit hubs, airport, education, and key services</p>
             </div>
-
             <div className="stat-card">
               <span>Existing Roads</span>
               <strong>{stats.existingRoadsCount}</strong>
               <p>Current road network connections across the platform</p>
             </div>
-
             <div className="stat-card">
               <span>Potential Roads</span>
               <strong>{stats.potentialRoadsCount}</strong>
               <p>Expansion candidates available for infrastructure planning</p>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            className="map-controls-grid"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.34, ease: "easeOut" }}
-          >
-            <motion.div
-              className="form-card"
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18 }}
-            >
+          <div className="map-controls-grid">
+            <div className="form-card">
               <h3>Display Layers</h3>
-
               <div className="toggle-list">
                 <label className="toggle-item">
                   <input
@@ -351,15 +355,10 @@ export default function NetworkMap() {
                   Connectivity Overlay
                 </label>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              className="form-card"
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18 }}
-            >
+            <div className="form-card">
               <h3>Traffic Window</h3>
-
               <label>
                 Select Time Window
                 <select
@@ -385,114 +384,78 @@ export default function NetworkMap() {
                     : "No traffic data is available for the selected window."}
                 </p>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              className="form-card"
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18 }}
-            >
+            <div className="details-card">
               <h3>Legend</h3>
-
               <div className="legend-list">
                 <div className="legend-item">
-                  <span
-                    className="legend-swatch"
-                    style={{ background: "#2563eb" }}
-                  />
-                  Residential Neighborhood
+                  <span className="legend-swatch" style={{ background: "#2563eb" }} />
+                  Residential / Mixed / Civic Nodes
                 </div>
-
                 <div className="legend-item">
-                  <span
-                    className="legend-swatch"
-                    style={{ background: "#16a34a" }}
-                  />
-                  Mixed Neighborhood
+                  <span className="legend-swatch" style={{ background: "#8b5cf6" }} />
+                  Facilities
                 </div>
-
                 <div className="legend-item">
-                  <span
-                    className="legend-swatch"
-                    style={{ background: "#7c3aed" }}
-                  />
-                  Business / Education Facility
+                  <span className="legend-line existing"></span>
+                  Low Traffic Road
                 </div>
-
                 <div className="legend-item">
-                  <span
-                    className="legend-swatch"
-                    style={{ background: "#dc2626" }}
-                  />
-                  Government
+                  <span className="legend-line" style={{ borderTopColor: "#eab308" }}></span>
+                  Medium Traffic Road
                 </div>
-
                 <div className="legend-item">
-                  <span
-                    className="legend-swatch"
-                    style={{ background: "#ec4899" }}
-                  />
-                  Medical Facility
+                  <span className="legend-line" style={{ borderTopColor: "#f97316" }}></span>
+                  High Traffic Road
                 </div>
-
                 <div className="legend-item">
-                  <span className="legend-line existing" />
-                  Existing Road
-                </div>
-
-                <div className="legend-item">
-                  <span className="legend-line potential" />
-                  Potential Road
-                </div>
-
-                <div className="legend-item">
-                  <span className="legend-line mst" />
-                  Connectivity Overlay
+                  <span className="legend-line" style={{ borderTopColor: "#dc2626" }}></span>
+                  Severe Traffic Road
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
 
           <div className="network-map-layout">
-            <motion.div
-              className="map-panel"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.32, ease: "easeOut" }}
-            >
-              <GraphMap
-                neighborhoods={neighborhoods}
-                facilities={facilities}
-                existingRoads={existingRoads}
-                potentialRoads={potentialRoads}
-                trafficFlow={trafficFlow}
-                mstData={mstData}
+            <div className="map-panel">
+              <RealMap
+                neighborhoods={visibleNeighborhoods}
+                facilities={visibleFacilities}
+                roads={showTrafficOverlay ? normalizedExistingRoads : normalizedExistingRoads}
+                trafficLookup={showTrafficOverlay ? trafficLookup : new Map()}
                 selectedTime={selectedTime}
-                showNeighborhoods={showNeighborhoods}
-                showFacilities={showFacilities}
-                showExistingRoads={showExistingRoads}
-                showPotentialRoads={showPotentialRoads}
-                showTrafficOverlay={showTrafficOverlay}
-                showMstOverlay={showMstOverlay}
                 selectedElement={selectedElement}
-                onSelectNode={(node) =>
-                  setSelectedElement({ kind: "node", data: node })
+                onSelectNode={(node) => setSelectedElement({ kind: "node", data: node })}
+                onSelectRoad={(edge) =>
+                  setSelectedElement({
+                    kind: "edge",
+                    data: {
+                      ...edge,
+                      roadCategory: "existing",
+                    },
+                  })
                 }
-                onSelectEdge={(edge) =>
-                  setSelectedElement({ kind: "edge", data: edge })
-                }
+                extraRoutes={[]}
               />
-            </motion.div>
 
-            <motion.div
-              className="details-panel"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.32, ease: "easeOut" }}
-            >
+              {showPotentialRoads && normalizedPotentialRoads.length > 0 && (
+                <div className="details-card">
+                  <h3>Potential Roads Loaded</h3>
+                  <p>
+                    {normalizedPotentialRoads.length} potential road segments were normalized
+                    successfully. We are not drawing them yet in this step because we are
+                    first stabilizing the real-map renderer for the live network and traffic
+                    data.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="details-panel">
               {renderSelectedDetails()}
 
-              <motion.div className="details-card" {...resultReveal}>
+              <div className="details-card">
                 <h3>Connectivity Summary</h3>
 
                 {!mstData ? (
@@ -505,17 +468,14 @@ export default function NetworkMap() {
                       <span>Connected</span>
                       <strong>{mstData.connected ? "Yes" : "No"}</strong>
                     </div>
-
                     <div>
                       <span>Nodes Count</span>
                       <strong>{mstData.nodes_count ?? "N/A"}</strong>
                     </div>
-
                     <div>
                       <span>Selected Edges</span>
                       <strong>{mstData.selected_edges_count ?? "N/A"}</strong>
                     </div>
-
                     <div>
                       <span>Total Distance</span>
                       <strong>
@@ -525,11 +485,11 @@ export default function NetworkMap() {
                     </div>
                   </div>
                 )}
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           </div>
         </>
       )}
-    </motion.section>
+    </motion.div>
   );
 }

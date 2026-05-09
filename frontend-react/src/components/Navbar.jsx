@@ -1,48 +1,65 @@
 import { NavLink } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
 
 const links = [
   { path: "/", label: "Overview" },
-  { path: "/network-map", label: "Network Map" },
-  { path: "/route-planner", label: "Route Planner" },
-  { path: "/emergency-routing", label: "Emergency Routing" },
-  { path: "/traffic-prediction", label: "Traffic Prediction" },
-  { path: "/traffic-signals", label: "Traffic Signals" },
+  { path: "/network-map", label: "Network" },
+  { path: "/route-planner", label: "Routing" },
+  { path: "/emergency-routing", label: "Emergency" },
+  { path: "/traffic-prediction", label: "Traffic AI" },
+  { path: "/traffic-signals", label: "Signals" },
   { path: "/infrastructure-optimizer", label: "Infrastructure" },
-  { path: "/public-transit", label: "Public Transit" },
+  { path: "/public-transit", label: "Transit" },
   { path: "/algorithm-race", label: "Performance" },
 ];
 
 export default function Navbar() {
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <div className="brand-mark">SC</div>
-        <div>
-          <h2>Smart Cairo</h2>
-          <p>Mobility Operations Platform</p>
-        </div>
-      </div>
+  const { isDark, toggleTheme } = useTheme();
 
-      <nav className="nav-links" aria-label="Primary navigation">
+  return (
+    <header className="topbar-shell">
+      <NavLink to="/" className="topbar-brand" aria-label="Smart Cairo Home">
+        <div className="topbar-brand-icon">SC</div>
+
+        <div className="topbar-brand-copy">
+          <h2>Smart Cairo</h2>
+          <p>Urban mobility intelligence platform</p>
+        </div>
+      </NavLink>
+
+      <nav className="topbar-nav" aria-label="Main navigation">
         {links.map((link) => (
           <NavLink
             key={link.path}
             to={link.path}
             end={link.path === "/"}
             className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
+              `topbar-link ${isActive ? "active" : ""}`
             }
           >
-            <span className="nav-link-dot" />
-            <span>{link.label}</span>
+            {link.label}
           </NavLink>
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        <span className="sidebar-footer-label">System Status</span>
-        <strong>Operational</strong>
+      <div className="topbar-actions">
+        <div className="topbar-status">
+          <span className="status-dot" />
+          <div className="topbar-status-copy">
+            <small>System</small>
+            <strong>Online</strong>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+        >
+          {isDark ? "☀ Light" : "🌙 Dark"}
+        </button>
       </div>
-    </aside>
+    </header>
   );
 }

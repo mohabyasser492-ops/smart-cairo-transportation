@@ -8,6 +8,7 @@ import pandas as pd
 
 from app.services.data_service import data_service
 from app.services.routing_service import routing_service
+from app.utils.map_geometry import path_to_route_geometry
 
 DAY_OF_WEEK_MAP = {
     "monday": 0,
@@ -147,6 +148,7 @@ class PredictionService:
             "source": source,
             "destination": destination,
             "path": path,
+            "route_geometry": path_to_route_geometry(path),
             "segments_count": len(segment_predictions),
             "segment_predictions": segment_predictions,
             "average_predicted_speed_kmh": average_speed,

@@ -8,8 +8,10 @@
     "@vitejs/plugin-react": "latest",
     "axios": "^1.16.0",
     "framer-motion": "^12.38.0",
+    "leaflet": "^1.9.4",
     "react": "latest",
     "react-dom": "latest",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.14.2",
     "recharts": "latest",
     "vite": "latest"
