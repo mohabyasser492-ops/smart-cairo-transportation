@@ -41,14 +41,14 @@ class MaintenancePlanRequest(BaseModel):
 
 
 class TrafficSignalOptimizationRequest(BaseModel):
-    total_cycle_time: int = Field(default=120, example=120)
-    min_green_time: int = Field(default=20, example=20)
-    max_green_time: int = Field(default=90, example=90)
+    total_cycle_time: int = Field(default=120, ge=30, le=240, example=120)
+    min_green_time: int = Field(default=20, ge=5, le=120, example=20)
+    max_green_time: int = Field(default=90, ge=10, le=180, example=90)
 
 
 class TrafficPredictionRequest(BaseModel):
     road_id: str = Field(..., example="2-3")
-    hour: int = Field(default=8, example=8)
+    hour: int = Field(default=8, ge=0, le=23, example=8)
     day_of_week: str = Field(default="Monday", example="Monday")
     weather: str = Field(default="clear", example="clear")
     is_holiday: bool = Field(default=False, example=False)
@@ -57,7 +57,7 @@ class TrafficPredictionRequest(BaseModel):
 class RouteTrafficPredictionRequest(BaseModel):
     source: str = Field(..., example="Nasr City")
     destination: str = Field(..., example="Downtown Cairo")
-    hour: int = Field(default=8, example=8)
+    hour: int = Field(default=8, ge=0, le=23, example=8)
     day_of_week: str = Field(default="Monday", example="Monday")
     weather: str = Field(default="clear", example="clear")
     is_holiday: bool = Field(default=False, example=False)

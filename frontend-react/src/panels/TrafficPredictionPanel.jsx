@@ -47,6 +47,7 @@ function RoadPredictionResult({ prediction }) {
           level={
             prediction.traffic_level ??
             prediction.congestion_level ??
+            prediction.predicted_traffic_level ??
             prediction.level
           }
         />
@@ -58,10 +59,11 @@ function RoadPredictionResult({ prediction }) {
           value={`${prediction.predicted_speed_kmh ?? prediction.speed_kmh ?? "N/A"} km/h`}
         />
         <PredictionMetric
-          label="Congestion Score"
+            label="Congestion Score"
           value={
             prediction.congestion_score ??
             prediction.predicted_congestion ??
+            prediction.predicted_traffic_level ??
             "N/A"
           }
         />
@@ -93,6 +95,13 @@ function RoutePredictionResult({ prediction }) {
   }
 
   const segments = prediction.segment_predictions ?? [];
+  const averageSpeed =
+    prediction.average_speed_kmh ?? prediction.average_predicted_speed_kmh;
+  const overallLevel =
+    prediction.overall_traffic_level ??
+    prediction.overall_predicted_traffic_level ??
+    prediction.traffic_level ??
+    prediction.congestion_level;
 
   return (
     <div className="route-result-stack">
@@ -100,11 +109,7 @@ function RoutePredictionResult({ prediction }) {
         <div className="prediction-result-head">
           <h4>Route Prediction</h4>
           <TrafficLevelBadge
-            level={
-              prediction.overall_traffic_level ??
-              prediction.traffic_level ??
-              prediction.congestion_level
-            }
+            level={overallLevel}
           />
         </div>
 
@@ -115,7 +120,7 @@ function RoutePredictionResult({ prediction }) {
           />
           <PredictionMetric
             label="Avg Speed"
-            value={`${prediction.average_speed_kmh ?? "N/A"} km/h`}
+            value={`${averageSpeed ?? "N/A"} km/h`}
           />
           <PredictionMetric
             label="Segments"
@@ -154,6 +159,7 @@ function RoutePredictionResult({ prediction }) {
                 level={
                   segment.traffic_level ??
                   segment.congestion_level ??
+                  segment.predicted_traffic_level ??
                   segment.level
                 }
               />

@@ -21,7 +21,7 @@ Create feature branches from `main` or from a future `dev` branch when your team
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+
 ```
 
 ## Run Frontend

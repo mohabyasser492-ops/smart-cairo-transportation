@@ -81,11 +81,14 @@ def detect_congestion_hotspots(
                         or "unknown"
                     ),
                     "name": intersection.get("name"),
+                    "from": intersection.get("from"),
+                    "to": intersection.get("to"),
                     "incoming_flow": round(incoming_flow, 2),
                     "capacity": round(capacity, 2),
                     "average_waiting_time": round(average_waiting_time, 2),
                     "congestion_score": round(congestion_score, 2),
                     "severity": classify_congestion(congestion_score),
+                    "congestion_level": classify_congestion(congestion_score),
                 }
             )
 
@@ -160,6 +163,8 @@ def optimize_traffic_signals_greedy(
                     or "unknown"
                 ),
                 "name": intersection.get("name"),
+                "from": intersection.get("from"),
+                "to": intersection.get("to"),
                 "incoming_flow": incoming_flow,
                 "capacity": capacity,
                 "average_waiting_time": average_waiting_time,
@@ -200,6 +205,8 @@ def optimize_traffic_signals_greedy(
             {
                 "intersection_id": intersection["intersection_id"],
                 "name": intersection["name"],
+                "from": intersection.get("from"),
+                "to": intersection.get("to"),
                 "incoming_flow": round(intersection["incoming_flow"], 2),
                 "capacity": round(intersection["capacity"], 2),
                 "average_waiting_time": round(intersection["average_waiting_time"], 2),
@@ -207,9 +214,20 @@ def optimize_traffic_signals_greedy(
                 "congestion_level": classify_congestion(intersection["congestion_score"]),
                 "recommended_green_time_sec": green_time,
                 "recommended_red_time_sec": red_time,
+                "total_cycle_time_sec": total_cycle_time,
                 "expected_waiting_time_reduction_percentage": waiting_reduction_percentage,
             }
         )
+
+    average_reduction = (
+        sum(
+            item["expected_waiting_time_reduction_percentage"]
+            for item in optimized_signals
+        )
+        / len(optimized_signals)
+        if optimized_signals
+        else 0
+    )
 
     return {
         "algorithm": "greedy_traffic_signal_optimization",
@@ -218,4 +236,8 @@ def optimize_traffic_signals_greedy(
         "max_green_time_sec": max_green_time,
         "optimized_intersections_count": len(optimized_signals),
         "optimized_signals": optimized_signals,
+        "summary": {
+            "optimized_intersections": len(optimized_signals),
+            "average_improvement": round(average_reduction, 2),
+        },
     }

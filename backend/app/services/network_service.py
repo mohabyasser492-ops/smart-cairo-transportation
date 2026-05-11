@@ -64,6 +64,10 @@ class NetworkService:
         weight_key = "construction_cost"
         if priority == "distance":
             weight_key = "distance_km"
+        elif priority == "connectivity":
+            weight_key = "connectivity_weight"
+        elif priority != "cost":
+            raise ValueError("priority must be one of: cost, distance, connectivity")
 
         mst_result = kruskal_minimum_spanning_tree(
             nodes=neighborhood_names,
@@ -91,6 +95,12 @@ class NetworkService:
             "priority": priority,
             "cost_per_km": cost_per_km,
             "result": mst_result,
+            "selected_edges": selected_edges,
+            "selected_roads": selected_edges,
+            "selected_edges_count": mst_result["selected_edges_count"],
+            "connected": mst_result["connected"],
+            "total_distance_km": actual_total_distance,
+            "estimated_total_cost": actual_total_cost,
             "summary": {
                 "selected_roads": mst_result["selected_edges_count"],
                 "total_distance_km": actual_total_distance,
@@ -183,9 +193,16 @@ class NetworkService:
                     "destination": destination,
                     "distance_km": distance_km,
                     "construction_cost": construction_cost,
+                    "estimated_cost": construction_cost,
                     "capacity_vehicles_per_hour": road.get("capacity_vehicles_per_hour")
                     or road.get("estimated_capacity_vehicles_per_hour"),
                     "condition": road.get("condition"),
+                    "connectivity_weight": self._calculate_connectivity_weight(
+                        distance_km=distance_km,
+                        capacity=road.get("capacity_vehicles_per_hour")
+                        or road.get("estimated_capacity_vehicles_per_hour"),
+                        condition=road.get("condition"),
+                    ),
                     "road_type": road_type,
                 }
             )
@@ -261,9 +278,13 @@ class NetworkService:
                     "road_id": edge.get("road_id"),
                     "source": edge.get("source"),
                     "destination": edge.get("destination"),
+                    "route_geometry": edge.get("route_geometry"),
                     "condition": condition,
                     "maintenance_cost": maintenance_cost,
+                    "estimated_cost": maintenance_cost,
+                    "cost": maintenance_cost,
                     "benefit_score": benefit_score,
+                    "priority_score": benefit_score,
                 }
             )
 
@@ -287,6 +308,19 @@ class NetworkService:
         condition_gap = max(1, 10 - condition)
 
         return int((int(capacity) / 100) * condition_gap)
+
+    @staticmethod
+    def _calculate_connectivity_weight(
+        distance_km: float,
+        capacity: Any,
+        condition: Any,
+    ) -> float:
+        capacity_value = float(capacity or 1000)
+        condition_value = float(condition or 5)
+        capacity_factor = max(capacity_value / 1000, 0.1)
+        condition_factor = max(condition_value / 10, 0.1)
+
+        return round(float(distance_km) / (capacity_factor * condition_factor), 4)
 
 
 network_service = NetworkService()

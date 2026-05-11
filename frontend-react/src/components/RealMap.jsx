@@ -162,6 +162,22 @@ function getOverlayStyle(type = "route") {
     case "astar":
       return { color: "#22c55e", weight: 7, opacity: 0.94 };
 
+    case "dijkstra-search":
+      return {
+        color: "#f97316",
+        weight: 4,
+        opacity: 0.86,
+        dashArray: "6 7",
+      };
+
+    case "astar-search":
+      return {
+        color: "#22c55e",
+        weight: 4,
+        opacity: 0.86,
+        dashArray: "6 7",
+      };
+
     case "mst":
       return { color: "#10b981", weight: 7, opacity: 0.94 };
 
@@ -171,6 +187,14 @@ function getOverlayStyle(type = "route") {
         weight: 7,
         opacity: 0.92,
         dashArray: "14 8",
+      };
+
+    case "maintenance":
+      return {
+        color: "#0ea5e9",
+        weight: 7,
+        opacity: 0.9,
+        dashArray: "4 7",
       };
 
     default:

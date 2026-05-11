@@ -743,6 +743,11 @@ function TrafficSignalsWorkspace() {
       signalStatuses ??
       [];
 
+    const optimizedRows =
+      signalResult?.optimized_signals ??
+      signalResult?.signals ??
+      [];
+
     if (Array.isArray(hotspotRows)) {
       hotspotRows.slice(0, 10).forEach((item, index) => {
         const position = getMarkerPositionFromItem(
@@ -802,8 +807,35 @@ function TrafficSignalsWorkspace() {
       });
     }
 
+    if (Array.isArray(optimizedRows)) {
+      optimizedRows.slice(0, 8).forEach((item, index) => {
+        const position = getMarkerPositionFromItem(
+          item,
+          locations
+        );
+
+        if (!position) return;
+
+        markers.push({
+          type: "generic",
+          label: "O",
+          title:
+            item.name ??
+            item.intersection_name ??
+            item.intersection_id ??
+            `Optimized Signal ${index + 1}`,
+          description: `Green: ${
+            item.recommended_green_time_sec ??
+            item.green_time ??
+            "N/A"
+          } sec`,
+          position,
+        });
+      });
+    }
+
     return markers;
-  }, [hotspots, signalStatuses, locations]);
+  }, [hotspots, signalResult, signalStatuses, locations]);
 
   const panel = (
     <TrafficSignalsPanel
@@ -972,6 +1004,7 @@ function InfrastructureWorkspace() {
     const expansionEdges =
       expansionResult?.selected_roads ??
       expansionResult?.selected_edges ??
+      expansionResult?.result?.selected_edges ??
       expansionResult?.roads ??
       [];
 
@@ -990,8 +1023,29 @@ function InfrastructureWorkspace() {
       });
     }
 
+    const maintenanceEdges =
+      maintenanceResult?.selected_projects ??
+      maintenanceResult?.projects ??
+      maintenanceResult?.selected_roads ??
+      [];
+
+    if (Array.isArray(maintenanceEdges)) {
+      maintenanceEdges.forEach((edge, index) => {
+        const points = getEdgeOverlayPoints(edge, locations);
+
+        if (points.length < 2) return;
+
+        routes.push({
+          type: "maintenance",
+          label: `Maintenance Project ${index + 1}`,
+          description: "Budget-aware maintenance selection",
+          points,
+        });
+      });
+    }
+
     return routes;
-  }, [mstData, expansionResult, locations]);
+  }, [mstData, expansionResult, maintenanceResult, locations]);
 
   const panel = (
     <InfrastructurePanel
@@ -1215,6 +1269,8 @@ function PerformanceWorkspace() {
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [raceStep, setRaceStep] = useState(0);
+  const [isRacePlaying, setIsRacePlaying] = useState(false);
 
   useEffect(() => {
     if (!locationOptions.length) return;
@@ -1231,16 +1287,18 @@ function PerformanceWorkspace() {
   }, [locationOptions]);
 
   function handleChange(event) {
-  const { name, value } = event.target;
+    const { name, value } = event.target;
 
-  setForm((previous) => ({
-    ...previous,
-    value,
-  }));
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
 
-  setComparison(null);
-  setError("");
-}
+    setComparison(null);
+    setRaceStep(0);
+    setIsRacePlaying(false);
+    setError("");
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -1248,6 +1306,8 @@ function PerformanceWorkspace() {
     setLoading(true);
     setError("");
     setComparison(null);
+    setRaceStep(0);
+    setIsRacePlaying(false);
 
     try {
       const data = await routingApi.compareDijkstraVsAstar({
@@ -1257,11 +1317,60 @@ function PerformanceWorkspace() {
       });
 
       setComparison(data);
+      setIsRacePlaying(true);
     } catch (err) {
       setError(err.message || "Could not compare Dijkstra and A*.");
     } finally {
       setLoading(false);
     }
+  }
+
+  const dijkstraOrder = comparison?.dijkstra?.exploration_order ?? [];
+  const astarOrder = comparison?.astar?.exploration_order ?? [];
+  const maxRaceSteps = useMemo(
+    () => Math.max(dijkstraOrder.length, astarOrder.length, 1),
+    [astarOrder.length, dijkstraOrder.length]
+  );
+
+  useEffect(() => {
+    if (!comparison || !isRacePlaying) return undefined;
+
+    const interval = window.setInterval(() => {
+      setRaceStep((previous) => {
+        if (previous >= maxRaceSteps - 1) {
+          setIsRacePlaying(false);
+          return previous;
+        }
+
+        return previous + 1;
+      });
+    }, 650);
+
+    return () => window.clearInterval(interval);
+  }, [comparison, isRacePlaying, maxRaceSteps]);
+
+  function getExplorationPoints(order) {
+    return order
+      .slice(0, raceStep + 1)
+      .map((name) => locations.nameLookup.get(String(name))?.mapPosition ?? null)
+      .filter(Boolean);
+  }
+
+  function getCurrentExplorationMarker(order, type, label, title) {
+    if (!order.length) return null;
+
+    const currentName = order[Math.min(raceStep, order.length - 1)];
+    const currentNode = locations.nameLookup.get(String(currentName));
+
+    if (!currentNode?.mapPosition) return null;
+
+    return {
+      type,
+      label,
+      title,
+      description: currentName,
+      position: currentNode.mapPosition,
+    };
   }
 
   const overlayRoutes = useMemo(() => {
@@ -1299,8 +1408,29 @@ function PerformanceWorkspace() {
       }
     }
 
+    const dijkstraExploration = getExplorationPoints(dijkstraOrder);
+    const astarExploration = getExplorationPoints(astarOrder);
+
+    if (dijkstraExploration.length > 1) {
+      routes.push({
+        type: "dijkstra-search",
+        label: "Dijkstra exploration",
+        description: "Visited-node race trail",
+        points: dijkstraExploration,
+      });
+    }
+
+    if (astarExploration.length > 1) {
+      routes.push({
+        type: "astar-search",
+        label: "A* exploration",
+        description: "Visited-node race trail",
+        points: astarExploration,
+      });
+    }
+
     return routes;
-  }, [comparison, locations.nameLookup]);
+  }, [astarOrder, comparison, dijkstraOrder, locations.nameLookup, raceStep]);
 
   const extraMarkers = useMemo(() => {
     const markers = [];
@@ -1328,8 +1458,36 @@ function PerformanceWorkspace() {
       });
     }
 
+    const dijkstraMarker = getCurrentExplorationMarker(
+      dijkstraOrder,
+      "dijkstra",
+      "D",
+      "Dijkstra current node"
+    );
+    const astarMarker = getCurrentExplorationMarker(
+      astarOrder,
+      "astar",
+      "A*",
+      "A* current node"
+    );
+
+    if (dijkstraMarker) {
+      markers.push(dijkstraMarker);
+    }
+
+    if (astarMarker) {
+      markers.push(astarMarker);
+    }
+
     return markers;
-  }, [form.source, form.destination, locations.nameLookup]);
+  }, [
+    astarOrder,
+    dijkstraOrder,
+    form.destination,
+    form.source,
+    locations.nameLookup,
+    raceStep,
+  ]);
 
   const panel = (
     <PerformancePanel
@@ -1337,6 +1495,19 @@ function PerformanceWorkspace() {
       locations={locationOptions}
       loading={loading}
       comparison={comparison}
+      locationLookup={locations.nameLookup}
+      raceStep={raceStep}
+      maxRaceSteps={maxRaceSteps}
+      isRacePlaying={isRacePlaying}
+      onToggleRace={() => setIsRacePlaying((value) => !value)}
+      onRestartRace={() => {
+        setRaceStep(0);
+        setIsRacePlaying(Boolean(comparison));
+      }}
+      onStepRace={(step) => {
+        setRaceStep(Math.max(0, Math.min(step, maxRaceSteps - 1)));
+        setIsRacePlaying(false);
+      }}
       onChange={handleChange}
       onSubmit={handleSubmit}
       error={error}
@@ -1411,7 +1582,6 @@ export default function AppRoutes() {
       <Route path="/public-transit" element={<TransitWorkspace />} />
 
      <Route path="/algorithm-race" element={<PerformanceWorkspace />} />
-``
 
       <Route path="*" element={<NotFound />} />
     </Routes>

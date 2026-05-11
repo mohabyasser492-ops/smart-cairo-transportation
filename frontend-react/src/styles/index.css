@@ -1107,6 +1107,14 @@ button:disabled {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
 }
 
+.dispatch-marker-inner.dijkstra {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.dispatch-marker-inner.astar {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
 /* ================================
    ERRORS
 ================================ */
@@ -1663,4 +1671,166 @@ button:disabled {
   background:
     radial-gradient(circle at top right, rgba(249, 115, 22, 0.13), transparent 34%),
     rgba(37, 99, 235, 0.08);
+}
+
+.algorithm-race-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.race-board {
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+}
+
+.race-board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.race-map-bg {
+  fill: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="dark"] .race-map-bg {
+  fill: rgba(248, 250, 252, 0.04);
+}
+
+.race-path,
+.race-trail {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.race-path {
+  stroke-width: 2.5;
+  stroke-dasharray: 8 7;
+  opacity: 0.38;
+}
+
+.race-trail {
+  stroke-width: 4;
+  opacity: 0.9;
+}
+
+.race-path.dijkstra,
+.race-trail.dijkstra,
+.race-node.dijkstra {
+  stroke: #f97316;
+}
+
+.race-path.astar,
+.race-trail.astar,
+.race-node.astar {
+  stroke: #22c55e;
+}
+
+.race-node {
+  fill: var(--app-panel-solid);
+  stroke-width: 2;
+}
+
+.race-runner circle {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.28));
+}
+
+.race-runner text {
+  fill: #ffffff;
+  font-size: 10px;
+  font-weight: 950;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.race-runner.dijkstra circle {
+  fill: #f97316;
+}
+
+.race-runner.astar circle {
+  fill: #22c55e;
+}
+
+.race-lanes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.race-lane {
+  padding: 13px;
+  border-radius: 16px;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+}
+
+.race-lane span {
+  display: block;
+  margin-top: 8px;
+  color: var(--app-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.race-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.race-progress-row strong,
+.race-progress-row span {
+  margin: 0;
+}
+
+.progress-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.18);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--primary), var(--info));
+  transition: width 0.35s ease;
+}
+
+.progress-bar-fill.dijkstra {
+  background: linear-gradient(135deg, #f97316, #fb923c);
+}
+
+.progress-bar-fill.astar,
+.progress-bar-fill.alt {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.race-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.race-scrubber {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--app-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.race-scrubber input {
+  width: 100%;
+  accent-color: var(--primary);
 }

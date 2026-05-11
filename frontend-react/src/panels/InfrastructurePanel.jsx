@@ -11,10 +11,16 @@ function formatCurrency(value) {
 }
 
 function InfraMetric({ label, value }) {
+  const displayValue = Array.isArray(value)
+    ? value.length
+    : value && typeof value === "object"
+      ? "N/A"
+      : value;
+
   return (
     <div className="result-metric">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong>{displayValue}</strong>
     </div>
   );
 }
@@ -46,8 +52,12 @@ function RoadList({ title, roads = [], emptyText = "No roads available." }) {
               <strong>
                 {road.estimated_cost != null || road.cost != null
                   ? formatCurrency(road.estimated_cost ?? road.cost)
-                  : road.priority_score != null
-                    ? `Score ${road.priority_score}`
+                  : road.maintenance_cost != null
+                    ? formatCurrency(road.maintenance_cost)
+                    : road.construction_cost != null
+                      ? formatCurrency(road.construction_cost)
+                      : road.priority_score != null
+                        ? `Score ${road.priority_score}`
                     : "—"}
               </strong>
             </div>
@@ -108,6 +118,15 @@ function ExpansionSummary({ expansionResult }) {
   }
 
   const summary = expansionResult.summary ?? expansionResult;
+  const selectedRoads =
+    expansionResult.selected_roads ??
+    expansionResult.selected_edges ??
+    expansionResult.result?.selected_edges ??
+    expansionResult.roads ??
+    [];
+  const selectedRoadsCount = Array.isArray(summary.selected_roads)
+    ? summary.selected_roads.length
+    : summary.selected_roads ?? selectedRoads.length ?? "N/A";
 
   return (
     <div className="route-result-stack">
@@ -117,12 +136,7 @@ function ExpansionSummary({ expansionResult }) {
         <div className="result-grid">
           <InfraMetric
             label="Selected Roads"
-            value={
-              summary.selected_roads ??
-              expansionResult.selected_roads?.length ??
-              expansionResult.selected_edges?.length ??
-              "N/A"
-            }
+            value={selectedRoadsCount}
           />
           <InfraMetric
             label="Distance"
@@ -157,12 +171,7 @@ function ExpansionSummary({ expansionResult }) {
 
       <RoadList
         title="Selected Expansion Roads"
-        roads={
-          expansionResult.selected_roads ??
-          expansionResult.selected_edges ??
-          expansionResult.roads ??
-          []
-        }
+        roads={selectedRoads}
       />
     </div>
   );
@@ -194,7 +203,12 @@ function MaintenanceSummary({ maintenanceResult }) {
         <div className="result-grid">
           <InfraMetric
             label="Projects"
-            value={summary.selected_projects ?? projects.length ?? "N/A"}
+            value={
+              summary.selected_projects_count ??
+              summary.selected_projects?.length ??
+              projects.length ??
+              "N/A"
+            }
           />
           <InfraMetric
             label="Budget Used"
@@ -216,7 +230,12 @@ function MaintenanceSummary({ maintenanceResult }) {
           />
           <InfraMetric
             label="Impact"
-            value={summary.total_impact ?? summary.impact_score ?? "N/A"}
+            value={
+              summary.total_impact ??
+              summary.impact_score ??
+              summary.total_benefit_score ??
+              "N/A"
+            }
           />
         </div>
       </div>

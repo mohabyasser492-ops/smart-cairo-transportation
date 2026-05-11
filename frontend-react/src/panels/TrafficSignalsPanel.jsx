@@ -63,6 +63,7 @@ function StatusList({ statuses }) {
             level={
               item.congestion_level ??
               item.traffic_level ??
+              item.status ??
               item.level ??
               "unknown"
             }
@@ -103,6 +104,7 @@ function HotspotList({ hotspots }) {
             level={
               item.congestion_level ??
               item.traffic_level ??
+              item.severity ??
               item.level ??
               "high"
             }
@@ -150,7 +152,7 @@ function OptimizedSignals({ result }) {
             />
             <SignalMetric
               label="Cycle"
-              value={`${item.total_cycle_time ?? item.cycle_time ?? "N/A"} sec`}
+              value={`${item.total_cycle_time ?? item.total_cycle_time_sec ?? item.cycle_time ?? "N/A"} sec`}
             />
             <SignalMetric
               label="Score"

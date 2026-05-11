@@ -46,6 +46,7 @@ class PredictionService:
     ) -> Dict[str, Any]:
         road_features = self._get_road_features(road_id)
         model_bundle = self._safe_load_model_bundle()
+        hour = self._validate_hour(hour)
 
         input_row = {
             "hour": int(hour),
@@ -78,10 +79,17 @@ class PredictionService:
             confidence = 0.55
             prediction_method = "fallback_heuristic"
 
+        predicted_traffic_level = self._classify_traffic_level(predicted_speed)
+        congestion_score = self._speed_to_congestion_score(predicted_speed)
+
         return {
             "road_id": road_id,
             "predicted_speed_kmh": round(predicted_speed, 2),
-            "predicted_traffic_level": self._classify_traffic_level(predicted_speed),
+            "congestion_score": congestion_score,
+            "predicted_congestion": congestion_score,
+            "predicted_traffic_level": predicted_traffic_level,
+            "traffic_level": predicted_traffic_level,
+            "congestion_level": predicted_traffic_level,
             "confidence": round(confidence, 2),
             "prediction_method": prediction_method,
             "features_used": {
@@ -105,6 +113,7 @@ class PredictionService:
         is_holiday: bool,
         weight: str = "distance",
     ) -> Dict[str, Any]:
+        hour = self._validate_hour(hour)
         route_result = routing_service.find_shortest_path(source, destination, weight)
         path = route_result["path"]
 
@@ -114,6 +123,7 @@ class PredictionService:
         segment_predictions = []
         speeds = []
         levels = []
+        segment_time_minutes = []
 
         for index in range(len(path) - 1):
             node_a = path[index]
@@ -130,19 +140,32 @@ class PredictionService:
                 is_holiday=is_holiday,
             )
 
+            road_features = self._get_road_features(road_id)
+            speed = max(float(prediction["predicted_speed_kmh"]), 1.0)
+            distance_km = float(road_features["road_length_km"])
+            estimated_segment_time = (distance_km / speed) * 60
+
             segment_predictions.append(
                 {
                     "from": node_a,
                     "to": node_b,
                     "road_id": road_id,
+                    "distance_km": round(distance_km, 2),
                     "predicted_speed_kmh": prediction["predicted_speed_kmh"],
+                    "congestion_score": prediction["congestion_score"],
                     "predicted_traffic_level": prediction["predicted_traffic_level"],
+                    "traffic_level": prediction["predicted_traffic_level"],
+                    "congestion_level": prediction["predicted_traffic_level"],
+                    "estimated_time_min": round(estimated_segment_time, 1),
                 }
             )
             speeds.append(prediction["predicted_speed_kmh"])
             levels.append(prediction["predicted_traffic_level"])
+            segment_time_minutes.append(estimated_segment_time)
 
         average_speed = round(sum(speeds) / len(speeds), 2) if speeds else 0.0
+        overall_level = self._combine_traffic_levels(levels)
+        estimated_time_min = round(sum(segment_time_minutes), 1) if segment_time_minutes else 0.0
 
         return {
             "source": source,
@@ -152,7 +175,11 @@ class PredictionService:
             "segments_count": len(segment_predictions),
             "segment_predictions": segment_predictions,
             "average_predicted_speed_kmh": average_speed,
-            "overall_predicted_traffic_level": self._combine_traffic_levels(levels),
+            "average_speed_kmh": average_speed,
+            "estimated_time_min": estimated_time_min,
+            "overall_predicted_traffic_level": overall_level,
+            "overall_traffic_level": overall_level,
+            "traffic_level": overall_level,
         }
 
     def get_model_metrics(self) -> Dict[str, Any]:
@@ -331,6 +358,18 @@ class PredictionService:
         return WEATHER_MAP[key]
 
     @staticmethod
+    def _validate_hour(hour: int) -> int:
+        try:
+            hour = int(hour)
+        except (TypeError, ValueError):
+            raise ValueError("hour must be an integer from 0 to 23")
+
+        if hour < 0 or hour > 23:
+            raise ValueError("hour must be between 0 and 23")
+
+        return hour
+
+    @staticmethod
     def _classify_traffic_level(predicted_speed_kmh: float) -> str:
         if predicted_speed_kmh < 15:
             return "severe"
@@ -339,6 +378,11 @@ class PredictionService:
         if predicted_speed_kmh < 40:
             return "medium"
         return "low"
+
+    @staticmethod
+    def _speed_to_congestion_score(predicted_speed_kmh: float) -> float:
+        normalized = (75.0 - float(predicted_speed_kmh)) / 67.0
+        return round(max(0.0, min(100.0, normalized * 100)), 2)
 
     @staticmethod
     def _combine_traffic_levels(levels: List[str]) -> str:

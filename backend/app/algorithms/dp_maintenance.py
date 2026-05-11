@@ -41,7 +41,9 @@ def optimize_maintenance_plan(
                 "maintenance_cost": maintenance_cost,
                 "scaled_cost": _scale_amount(maintenance_cost),
                 "benefit_score": benefit_score,
+                "priority_score": benefit_score,
                 "condition": project.get("condition"),
+                "route_geometry": project.get("route_geometry"),
             }
         )
 
@@ -77,8 +79,12 @@ def optimize_maintenance_plan(
                     "source": project["source"],
                     "destination": project["destination"],
                     "maintenance_cost": project["maintenance_cost"],
+                    "estimated_cost": project["maintenance_cost"],
+                    "cost": project["maintenance_cost"],
                     "benefit_score": project["benefit_score"],
+                    "priority_score": project["benefit_score"],
                     "condition": project["condition"],
+                    "route_geometry": project.get("route_geometry"),
                 }
             )
             remaining_budget_units -= project["scaled_cost"]
@@ -96,6 +102,8 @@ def optimize_maintenance_plan(
         "total_cost": total_cost,
         "remaining_budget": budget - total_cost,
         "total_benefit_score": total_benefit,
+        "total_impact": total_benefit,
+        "impact_score": total_benefit,
         "scaling_unit": SCALING_UNIT,
     }
 
